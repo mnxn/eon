@@ -13,6 +13,8 @@
 
 (generate_opam_files true)
 
+(using menhir 2.1)
+
 (package
  (name eon)
  (synopsis "The eon programming language")
@@ -20,4 +22,10 @@
   (ocaml
    (and
     (>= 4.14)
-    (< 4.15)))))
+    (< 4.15)))
+  (sedlex
+   (>= 3.1))
+  (menhir
+   (>= 20230415))
+  ppx_deriving
+  ppx_import))

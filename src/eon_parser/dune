@@ -1,0 +1,15 @@
+(library
+ (public_name eon.parser)
+ (name eon_parser)
+ (libraries sedlex menhirLib)
+ (preprocess
+  (staged_pps sedlex.ppx ppx_import ppx_deriving.show)))
+
+(menhir
+ (merge_into parser)
+ (flags --external-tokens Token --explain)
+ (modules token parser))
+
+(menhir
+ (flags --only-tokens --explain)
+ (modules token))
