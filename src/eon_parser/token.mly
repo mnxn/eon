@@ -12,9 +12,9 @@
 %token SEMICOLON ";" COLON ":" DOT "." COMMA ","
 %token AMPERSAND "&" HAT "^"
 %token NOT "!" AND "&&" OR "||"
-%token EQUAL "=" EQUALEQUAL "==" NOTEQUAL "!="
-%token LESS "<" LESSEQUAL "<="
-%token GREATER ">" GREATEREQUAL ">="
+%token EQUAL "=" EQUAL_EQUAL "==" NOT_EQUAL "!="
+%token LESS "<" LESS_EQUAL "<="
+%token GREATER ">" GREATER_EQUAL ">="
 %token PLUS "+" DASH "-" ASTERISK "*" SLASH "/" PERCENT "%"
 %token LARROW "<-" RARROW "->"
 
@@ -30,9 +30,9 @@
 %left LARROW
 %left OR
 %left AND
-%left EQUALEQUAL NOTEQUAL
-      LESS LESSEQUAL
-      GREATER GREATEREQUAL
+%left EQUAL_EQUAL NOT_EQUAL
+      LESS LESS_EQUAL
+      GREATER GREATER_EQUAL
 %left PLUS DASH
 %left ASTERISK SLASH PERCENT
 

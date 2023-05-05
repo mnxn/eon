@@ -122,11 +122,11 @@ type token =
   | PLUS
   | PERCENT
   | OR
-  | NOTEQUAL
+  | NOT_EQUAL
   | NOT
   | LPAREN
   | LET
-  | LESSEQUAL
+  | LESS_EQUAL
   | LESS
   | LCURLY
   | LBRACKET
@@ -135,11 +135,11 @@ type token =
   | IF
   | IDENTIFIER of string
   | HAT
-  | GREATEREQUAL
+  | GREATER_EQUAL
   | GREATER
   | FUNC
   | FLOAT of float
-  | EQUALEQUAL
+  | EQUAL_EQUAL
   | EQUAL
   | EOF
   | ELSE

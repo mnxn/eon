@@ -39,12 +39,12 @@ let rec lex lexbuf =
   | "&&" -> AND
   | "||" -> OR
   | "=" -> EQUAL
-  | "==" -> EQUALEQUAL
-  | "!=" -> NOTEQUAL
+  | "==" -> EQUAL_EQUAL
+  | "!=" -> NOT_EQUAL
   | "<" -> LESS
-  | "<=" -> LESSEQUAL
+  | "<=" -> LESS_EQUAL
   | ">" -> GREATER
-  | ">=" -> GREATEREQUAL
+  | ">=" -> GREATER_EQUAL
   | "+" -> PLUS
   | "-" -> DASH
   | "*" -> ASTERISK
