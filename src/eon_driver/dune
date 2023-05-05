@@ -1,0 +1,4 @@
+(library
+ (public_name eon.driver)
+ (name eon_driver)
+ (libraries eon.parser))

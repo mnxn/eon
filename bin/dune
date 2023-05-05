@@ -1,3 +1,4 @@
 (executable
  (public_name eon)
- (name main))
+ (name main)
+ (libraries eon.driver))
