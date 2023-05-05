@@ -1,0 +1,8 @@
+profile=janestreet
+quiet=true
+module-item-spacing=sparse
+let-binding-spacing=compact
+exp-grouping=preserve
+if-then-else=k-r
+parens-ite=false
+sequence-blank-line=preserve-one
