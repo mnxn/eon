@@ -12,7 +12,6 @@ depends: [
   "sedlex" {>= "3.1"}
   "menhir" {>= "20230415"}
   "ppx_deriving"
-  "ppx_import"
   "odoc" {with-doc}
 ]
 build: [

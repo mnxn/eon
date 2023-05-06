@@ -3,7 +3,7 @@
  (name eon_parser)
  (libraries sedlex menhirLib)
  (preprocess
-  (staged_pps sedlex.ppx ppx_import ppx_deriving.show)))
+  (pps sedlex.ppx ppx_deriving.show)))
 
 (menhir
  (merge_into parser)

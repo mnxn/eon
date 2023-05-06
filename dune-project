@@ -27,5 +27,4 @@
    (>= 3.1))
   (menhir
    (>= 20230415))
-  ppx_deriving
-  ppx_import))
+  ppx_deriving))
