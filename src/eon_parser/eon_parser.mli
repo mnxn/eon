@@ -1,4 +1,4 @@
-type program = definition list [@@deriving show]
+type program = definition list
 
 and definition =
   | Function of
@@ -109,6 +109,34 @@ and binary_operator =
   | Divide
   | Remainder
 
+val pp_program : Format.formatter -> program -> unit
+
+val show_program : program -> string
+
+val pp_definition : Format.formatter -> definition -> unit
+
+val show_definition : definition -> string
+
+val pp_typ : Format.formatter -> typ -> unit
+
+val show_typ : typ -> string
+
+val pp_expression : Format.formatter -> expression -> unit
+
+val show_expression : expression -> string
+
+val pp_block : Format.formatter -> block -> unit
+
+val show_block : block -> string
+
+val pp_unary_operator : Format.formatter -> unary_operator -> unit
+
+val show_unary_operator : unary_operator -> string
+
+val pp_binary_operator : Format.formatter -> binary_operator -> unit
+
+val show_binary_operator : binary_operator -> string
+
 type token =
   | TYPE
   | THEN
@@ -151,7 +179,10 @@ type token =
   | ASTERISK
   | AND
   | AMPERSAND
-[@@deriving show]
+
+val pp_token : Format.formatter -> token -> unit
+
+val show_token : token -> string
 
 val lex : Sedlexing.lexbuf -> token
 

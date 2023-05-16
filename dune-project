@@ -13,6 +13,8 @@
 
 (generate_opam_files true)
 
+(implicit_transitive_deps false)
+
 (using menhir 2.1)
 
 (package
