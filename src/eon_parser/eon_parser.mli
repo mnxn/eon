@@ -153,21 +153,9 @@ type token =
   | AMPERSAND
 [@@deriving show]
 
-type position =
-  { line : int
-  ; column : int
-  ; offset : int
-  }
-
-type error_range =
-  { file_name : string
-  ; start_pos : position
-  ; end_pos : position
-  }
-
 val lex : Sedlexing.lexbuf -> token
 
 val parse
   :  (Sedlexing.lexbuf -> token)
   -> Sedlexing.lexbuf
-  -> (program, error_range) result
+  -> (program, Eon_report.error) result

@@ -1,7 +1,7 @@
 (library
  (public_name eon.parser)
  (name eon_parser)
- (libraries sedlex menhirLib)
+ (libraries eon.report sedlex menhirLib)
  (preprocess
   (pps sedlex.ppx ppx_deriving.show)))
 
