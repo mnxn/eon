@@ -4,7 +4,7 @@ let run filename =
   Sedlexing.set_filename lexbuf filename;
   begin
     match Eon_parser.parse Eon_parser.lex lexbuf with
-    | Ok program -> print_endline (Eon_parser.show_program program)
+    | Ok program -> print_endline (Eon_parser.show_pprogram program)
     | Error e -> Format.eprintf "%a" (Eon_report.pp_error file) e
   end;
   close_in file

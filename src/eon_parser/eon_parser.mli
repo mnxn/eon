@@ -1,91 +1,91 @@
-type program = definition list
+type pprogram = pdefinition list
 
-and definition =
-  | Function of
+and pdefinition =
+  | PFunction of
       { name : string
-      ; parameters : (string * typ) list
-      ; return_type : typ
-      ; body : expression
+      ; parameters : (string * ptype) list
+      ; return_type : ptype
+      ; body : pexpression
       }
-  | Type_alias of
+  | PType_alias of
       { name : string
-      ; typ : typ
+      ; value : ptype
       }
-  | Type_record of
+  | PType_record of
       { name : string
-      ; fields : (string * typ) list
+      ; fields : (string * ptype) list
       }
 
-and typ =
-  | Named_type of string
-  | Pointer_type of typ
-  | Slice_type of typ
-  | Array_type of
-      { element_type : typ
+and ptype =
+  | PNamed_type of string
+  | PPointer_type of ptype
+  | PSlice_type of ptype
+  | PArray_type of
+      { element_type : ptype
       ; length : int64
       }
-  | Function_type of
-      { parameters : typ list
-      ; return_type : typ
+  | PFunction_type of
+      { parameters : ptype list
+      ; return_type : ptype
       }
 
-and expression =
-  | Identifier of string
-  | Unit
-  | Boolean of bool
-  | Integer of int64
-  | Float of float
-  | String of string
-  | Array of expression list
-  | Record of
+and pexpression =
+  | PIdentifier of string
+  | PUnit
+  | PBoolean of bool
+  | PInteger of int64
+  | PFloat of float
+  | PString of string
+  | PArray of pexpression list
+  | PRecord of
       { name : string
-      ; fields : (string * expression) list
+      ; fields : (string * pexpression) list
       }
-  | Index of
-      { expression : expression
-      ; index : expression
+  | PIndex of
+      { expression : pexpression
+      ; index : pexpression
       }
-  | Access of
-      { expression : expression
+  | PAccess of
+      { expression : pexpression
       ; field : string
       }
-  | Assign of
-      { target : expression
-      ; source : expression
+  | PAssign of
+      { target : pexpression
+      ; source : pexpression
       }
-  | Apply of
-      { func : expression
-      ; arguments : expression list
+  | PApply of
+      { func : pexpression
+      ; arguments : pexpression list
       }
-  | Unary_operator of
+  | PUnary_operator of
       { operator : unary_operator
-      ; expression : expression
+      ; expression : pexpression
       }
-  | Binary_operator of
-      { left : expression
+  | PBinary_operator of
+      { left : pexpression
       ; operator : binary_operator
-      ; right : expression
+      ; right : pexpression
       }
-  | Block of block
-  | Let of
+  | PBlock of pblock
+  | PLet of
       { name : string
-      ; typ : typ option
-      ; value : expression
+      ; value_type : ptype option
+      ; value : pexpression
       }
-  | If of
-      { condition : expression
-      ; true_branch : expression
-      ; false_branch : expression
+  | PIf of
+      { condition : pexpression
+      ; true_branch : pexpression
+      ; false_branch : pexpression
       }
-  | Closure of
-      { parameters : (string * typ) list
-      ; return_type : typ option
-      ; body : expression
+  | PClosure of
+      { parameters : (string * ptype) list
+      ; return_type : ptype option
+      ; body : pexpression
       }
 
-and block =
-  { statements : expression list
-  ; result : expression option
+and pblock =
+  { statements : pexpression list
+  ; result : pexpression option
   }
 
 and unary_operator =
@@ -109,25 +109,25 @@ and binary_operator =
   | Divide
   | Remainder
 
-val pp_program : Format.formatter -> program -> unit
+val pp_pprogram : Format.formatter -> pprogram -> unit
 
-val show_program : program -> string
+val show_pprogram : pprogram -> string
 
-val pp_definition : Format.formatter -> definition -> unit
+val pp_pdefinition : Format.formatter -> pdefinition -> unit
 
-val show_definition : definition -> string
+val show_pdefinition : pdefinition -> string
 
-val pp_typ : Format.formatter -> typ -> unit
+val pp_ptype : Format.formatter -> ptype -> unit
 
-val show_typ : typ -> string
+val show_ptype : ptype -> string
 
-val pp_expression : Format.formatter -> expression -> unit
+val pp_pexpression : Format.formatter -> pexpression -> unit
 
-val show_expression : expression -> string
+val show_pexpression : pexpression -> string
 
-val pp_block : Format.formatter -> block -> unit
+val pp_pblock : Format.formatter -> pblock -> unit
 
-val show_block : block -> string
+val show_pblock : pblock -> string
 
 val pp_unary_operator : Format.formatter -> unary_operator -> unit
 
@@ -189,4 +189,4 @@ val lex : Sedlexing.lexbuf -> token
 val parse
   :  (Sedlexing.lexbuf -> token)
   -> Sedlexing.lexbuf
-  -> (program, Eon_report.error) result
+  -> (pprogram, Eon_report.error) result
