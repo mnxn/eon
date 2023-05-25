@@ -1,4 +1,4 @@
-include Ast
+module Parsetree = Parsetree
 
 type token = Token.token =
   | TYPE

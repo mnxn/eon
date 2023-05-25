@@ -1,8 +1,8 @@
 %{
-open Ast
+open Parsetree
 %}
 
-%start <Ast.pprogram> program
+%start <Parsetree.pprogram> program
 %%
 
 program:

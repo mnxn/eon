@@ -1,4 +1,4 @@
-type cprogram = cdefinition list [@@deriving show { with_path = false }]
+type cprogram = cdefinition list
 
 and cdefinition =
   | CFunction of
@@ -85,13 +85,13 @@ and cexpression =
       ; ctype : ctype
       }
   | CUnary_operator of
-      { operator : Eon_parser.unary_operator
+      { operator : Eon_parser.Parsetree.unary_operator
       ; expression : cexpression
       ; ctype : ctype
       }
   | CBinary_operator of
       { left : cexpression
-      ; operator : Eon_parser.binary_operator
+      ; operator : Eon_parser.Parsetree.binary_operator
       ; right : cexpression
       ; ctype : ctype
       }
@@ -121,23 +121,24 @@ and cblock =
   ; ctype : ctype
   }
 
-let cexpression_type (cexpr : cexpression) =
-  match cexpr with
-  | CIdentifier { ctype; _ }
-  | CUnit { ctype; _ }
-  | CBoolean { ctype; _ }
-  | CInteger { ctype; _ }
-  | CFloat { ctype; _ }
-  | CString { ctype; _ }
-  | CArray { ctype; _ }
-  | CRecord { ctype; _ }
-  | CIndex { ctype; _ }
-  | CAccess { ctype; _ }
-  | CAssign { ctype; _ }
-  | CApply { ctype; _ }
-  | CUnary_operator { ctype; _ }
-  | CBinary_operator { ctype; _ }
-  | CBlock { ctype; _ }
-  | CLet { ctype; _ }
-  | CIf { ctype; _ }
-  | CClosure { ctype; _ } -> ctype
+val pp_cprogram : Format.formatter -> cprogram -> unit
+
+val show_cprogram : cprogram -> string
+
+val pp_cdefinition : Format.formatter -> cdefinition -> unit
+
+val show_cdefinition : cdefinition -> string
+
+val pp_ctype : Format.formatter -> ctype -> unit
+
+val show_ctype : ctype -> string
+
+val pp_cexpression : Format.formatter -> cexpression -> unit
+
+val show_cexpression : cexpression -> string
+
+val pp_cblock : Format.formatter -> cblock -> unit
+
+val show_cblock : cblock -> string
+
+val cexpression_type : cexpression -> ctype

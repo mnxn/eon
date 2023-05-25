@@ -1,5 +1,5 @@
-open Eon_parser
-open Ast
+open Eon_parser.Parsetree
+open Typedtree
 module Env = Map.Make (String)
 
 type ('parsed, 'typed) check = 'parsed -> ('typed, Eon_report.error) result
@@ -406,4 +406,4 @@ let rec check_definitions (env : binding Env.t)
 
 let check : (pprogram, cprogram) check = check_definitions Primitive.env
 
-include Ast
+module Typedtree = Typedtree
