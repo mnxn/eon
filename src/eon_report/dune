@@ -1,3 +1,4 @@
 (library
  (public_name eon.report)
- (name eon_report))
+ (name eon_report)
+ (libraries))

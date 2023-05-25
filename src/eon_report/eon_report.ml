@@ -13,14 +13,19 @@ type range =
 type error =
   | Lexer_error of range
   | Parser_error of range
+  | Type_error
 
 let range = function
   | Lexer_error r -> r
   | Parser_error r -> r
+  | Type_error ->
+    let zero = { line = 0; column = 0; offset = 0 } in
+    { file_name = "<invalid>"; start_pos = zero; end_pos = zero }
 
 let message = function
   | Lexer_error _ -> "Lexing error"
   | Parser_error _ -> "Parsing error"
+  | Type_error -> "Type error"
 
 let rec skip_n_lines ic n =
   if n > 0 then begin

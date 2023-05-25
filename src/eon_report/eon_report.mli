@@ -13,6 +13,7 @@ type range =
 type error =
   | Lexer_error of range
   | Parser_error of range
+  | Type_error
 
 val pp_error : in_channel -> Format.formatter -> error -> unit
 

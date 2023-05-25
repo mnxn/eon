@@ -3,8 +3,8 @@ let run filename =
   let lexbuf = Sedlexing.Utf8.from_channel file in
   Sedlexing.set_filename lexbuf filename;
   begin
-    match Eon_parser.parse Eon_parser.lex lexbuf with
-    | Ok program -> print_endline (Eon_parser.show_pprogram program)
+    match Result.bind (Eon_parser.parse Eon_parser.lex lexbuf) Eon_typechecker.check with
+    | Ok cprogram -> print_endline (Eon_typechecker.show_cprogram cprogram)
     | Error e -> Format.eprintf "%a" (Eon_report.pp_error file) e
   end;
   close_in file

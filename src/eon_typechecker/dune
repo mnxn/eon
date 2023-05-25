@@ -1,0 +1,6 @@
+(library
+ (public_name eon.typechecker)
+ (name eon_typechecker)
+ (libraries eon.parser eon.report)
+ (preprocess
+  (pps ppx_deriving.show)))
