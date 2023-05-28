@@ -48,8 +48,12 @@ let rec check_type env : (ptype, ctype) check =
     | Some (Type ctype) -> Ok ctype
     | _ -> Error Eon_report.Type_error
   end
-  | PPointer_type ptype -> check_type env ptype
-  | PArray_type ptype -> check_type env ptype
+  | PPointer_type ptype ->
+    let+ ctype = check_type env ptype in
+    CPointer_type ctype
+  | PArray_type ptype ->
+    let+ ctype = check_type env ptype in
+    CArray_type ctype
   | PFunction_type { parameters; return_type } ->
     let* parameters = check_parameters parameters in
     let+ return_type = check_type env return_type in
