@@ -60,24 +60,24 @@ let rec check_type env : (ptype, ctype) check =
       ctype :: ctypes
   in
   function
-  | PNamed_type name -> begin
+  | PNamed_type { name; range = _ } -> begin
     match Env.lookup_type name env with
     | Some t -> Ok t
     | None -> Error Type_error
   end
-  | PPointer_type ptype ->
-    let+ ctype = check_type env ptype in
+  | PPointer_type { underlying_type; range = _ } ->
+    let+ ctype = check_type env underlying_type in
     CPointer_type ctype
-  | PArray_type ptype ->
-    let+ ctype = check_type env ptype in
+  | PArray_type { element_type; range = _ } ->
+    let+ ctype = check_type env element_type in
     CArray_type ctype
-  | PFunction_type { parameters; return_type } ->
+  | PFunction_type { parameters; return_type; range = _ } ->
     let* parameters = check_parameters parameters in
     let+ return_type = check_type env return_type in
     CFunction_type { parameters; return_type }
 
 let rec check_expression (env : Env.t) : (pexpression, cexpression) check = function
-  | PIdentifier name ->
+  | PIdentifier { name; range = _ } ->
     let+ ctype =
       begin
         match Env.lookup_value name env with
@@ -86,13 +86,13 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       end
     in
     CIdentifier { name; ctype }
-  | PUnit -> Ok (CUnit { ctype = Primitive.unit })
-  | PBoolean value -> Ok (CBoolean { value; ctype = Primitive.bool })
-  | PInteger value -> Ok (CInteger { value; ctype = Primitive.int })
-  | PFloat value -> Ok (CFloat { value; ctype = Primitive.float })
-  | PString value -> Ok (CString { value; ctype = Primitive.string })
-  | PArray [] -> Error Type_error
-  | PArray (first :: rest) ->
+  | PUnit { range = _ } -> Ok (CUnit { ctype = Primitive.unit })
+  | PBoolean { value; range = _ } -> Ok (CBoolean { value; ctype = Primitive.bool })
+  | PInteger { value; range = _ } -> Ok (CInteger { value; ctype = Primitive.int })
+  | PFloat { value; range = _ } -> Ok (CFloat { value; ctype = Primitive.float })
+  | PString { value; range = _ } -> Ok (CString { value; ctype = Primitive.string })
+  | PArray { elements = []; range = _ } -> Error Type_error
+  | PArray { elements = first :: rest; range = _ } ->
     let* cfirst = check_expression env first in
     let element_type = cexpression_type cfirst in
     let+ crest =
@@ -109,7 +109,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
     in
     let celements = cfirst :: crest in
     CArray { elements = celements; ctype = CArray_type element_type }
-  | PRecord { name; fields } ->
+  | PRecord { name; fields; range = _ } ->
     let* ctype =
       begin
         match Env.lookup_type name env with
@@ -119,7 +119,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
     in
     let* record_fields =
       match ctype with
-      | CRecord_type { fields; _ } -> Ok fields
+      | CRecord_type { name = _; fields } -> Ok fields
       | _ -> Error Eon_report.Type_error
     in
     let+ cfields =
@@ -141,7 +141,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       List.fold_right f fields (Ok [])
     in
     CRecord { name; fields = cfields; ctype }
-  | PIndex { expression; index } ->
+  | PIndex { expression; index; range = _ } ->
     let* cexpression = check_expression env expression in
     let* cindex = check_expression env index in
     begin
@@ -150,11 +150,11 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         Ok (CIndex { expression = cexpression; index = cindex; ctype = element_type })
       | _ -> Error Type_error
     end
-  | PAccess { expression; field } ->
+  | PAccess { expression; field; range = _ } ->
     let* cexpression = check_expression env expression in
     begin
       match cexpression_type cexpression with
-      | CRecord_type { fields; _ } -> begin
+      | CRecord_type { name = _; fields } -> begin
         match List.assoc_opt field fields with
         | Some field_type ->
           Ok (CAccess { expression = cexpression; field; ctype = field_type })
@@ -162,14 +162,14 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       end
       | _ -> Error Type_error
     end
-  | PAssign { target; source } ->
+  | PAssign { target; source; range = _ } ->
     let* ctarget = check_expression env target in
     let* csource = check_expression env source in
     if cexpression_type ctarget = cexpression_type csource then
       Ok (CAssign { target = ctarget; source = csource; ctype = Primitive.unit })
     else
       Error Type_error
-  | PApply { func; arguments } ->
+  | PApply { func; arguments; range = _ } ->
     let* cfunc = check_expression env func in
     let* cfunc_params, cfunc_result =
       match cexpression_type cfunc with
@@ -190,7 +190,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       List.fold_right2 f cfunc_params arguments (Ok [])
     in
     CApply { func = cfunc; arguments = cargs; ctype = cfunc_result }
-  | PUnary_operator { operator; expression } ->
+  | PUnary_operator { operator; expression; range = _ } ->
     let* cexpression = check_expression env expression in
     let ctype = cexpression_type cexpression in
     let+ cresult_type =
@@ -213,7 +213,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       end
     in
     CUnary_operator { operator; expression = cexpression; ctype = cresult_type }
-  | PBinary_operator { left; operator; right } ->
+  | PBinary_operator { left; operator; right; range = _ } ->
     let* cleft = check_expression env left in
     let* cright = check_expression env right in
     let cleft_type = cexpression_type cleft in
@@ -248,10 +248,10 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
           Error Eon_report.Type_error
     in
     CBinary_operator { left = cleft; operator; right = cright; ctype = cresult_type }
-  | PBlock block ->
-    let+ cblock = check_block env block in
+  | PBlock { body; range = _ } ->
+    let+ cblock = check_block env body in
     CBlock cblock
-  | PLet { name; value_type = Some value_type; value } ->
+  | PLet { name; value_type = Some value_type; value; range = _ } ->
     let* cvalue = check_expression env value in
     let cvalue_type_actual = cexpression_type cvalue in
     let* cvalue_type_expected = check_type env value_type in
@@ -265,11 +265,11 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
            })
     else
       Error Type_error
-  | PLet { name; value_type = None; value } ->
+  | PLet { name; value_type = None; value; range = _ } ->
     let+ cvalue = check_expression env value in
     let cvalue_type = cexpression_type cvalue in
     CLet { name; value_type = cvalue_type; value = cvalue; ctype = Primitive.unit }
-  | PIf { condition; true_branch; false_branch } ->
+  | PIf { condition; true_branch; false_branch; range = _ } ->
     let* ccondition = check_expression env condition in
     let* () =
       let ctype = cexpression_type ccondition in
@@ -292,7 +292,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
            })
     else
       Error Type_error
-  | PClosure { parameters; return_type; body } ->
+  | PClosure { parameters; return_type; body; range = _ } ->
     let* cparameters =
       let f (name, ptype) = function
         | Ok acc ->
@@ -325,7 +325,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
 and check_block (env : Env.t) : (pblock, cblock) check =
   let rec check_statements env : (pexpression list, cexpression list) check = function
     | [] -> Ok []
-    | PLet { name; value_type; value } :: stats ->
+    | PLet { name; value_type; value; range = _ } :: stats ->
       let* cexpression = check_expression env value in
       let cvalue_type_actual = cexpression_type cexpression in
       let* cvalue_type =
@@ -372,7 +372,7 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
   | pdef :: pdefs ->
     let* name, binding, cdef =
       match pdef with
-      | PFunction { name; parameters; return_type; body } ->
+      | PFunction { name; parameters; return_type; body; range = _ } ->
         let* cparameters =
           let f (name, ptype) = function
             | Ok acc ->
@@ -398,10 +398,10 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
           Ok (name, `Value ctype, cfunction)
         else
           Error Eon_report.Type_error
-      | PType_alias { name; value } ->
+      | PType_alias { name; value; range = _ } ->
         let+ ctype = check_type env value in
         name, `Type ctype, CType_alias { name; value = ctype }
-      | PType_record { name; fields } ->
+      | PType_record { name; fields; range = _ } ->
         let+ cfields = check_fields fields in
         ( name
         , `Type (CRecord_type { name; fields = cfields })

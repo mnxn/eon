@@ -55,6 +55,5 @@ let parse lexer lexbuf =
     let range = Eon_report.pos start_pos in
     Error (Eon_report.Lexer_error range)
   | Parser.Error ->
-    let start_pos, end_pos = Sedlexing.lexing_positions lexbuf in
-    let range = Eon_report.loc (start_pos, end_pos) in
+    let range = Sedlexing.lexing_positions lexbuf in
     Error (Eon_report.Parser_error range)
