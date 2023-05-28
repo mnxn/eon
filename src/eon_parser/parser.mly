@@ -31,9 +31,7 @@ typ:
   | "^" element_type=typ
     { PPointer_type element_type }
   | "[" element_type=typ "]"
-    { PSlice_type element_type }
-  | "[" element_type=typ ";" length=INTEGER "]"
-    { PArray_type { element_type; length } }
+    { PArray_type element_type }
   | "(" parameters=separated_list(",", typ) ")" "->" return_type=typ
     { PFunction_type { parameters; return_type } }
 

@@ -19,11 +19,7 @@ and cdefinition =
 and ctype =
   | CPrimitive_type of string
   | CPointer_type of ctype
-  | CSlice_type of ctype
-  | CArray_type of
-      { element_type : ctype
-      ; length : int64
-      }
+  | CArray_type of ctype
   | CFunction_type of
       { parameters : ctype list
       ; return_type : ctype

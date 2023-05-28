@@ -49,13 +49,7 @@ let rec check_type env : (ptype, ctype) check =
     | _ -> Error Eon_report.Type_error
   end
   | PPointer_type ptype -> check_type env ptype
-  | PSlice_type ptype -> check_type env ptype
-  | PArray_type { element_type; length } ->
-    if length < 0L then
-      Error Eon_report.Type_error
-    else
-      let+ element_type = check_type env element_type in
-      CArray_type { element_type; length }
+  | PArray_type ptype -> check_type env ptype
   | PFunction_type { parameters; return_type } ->
     let* parameters = check_parameters parameters in
     let+ return_type = check_type env return_type in
@@ -98,8 +92,7 @@ let rec check_expression (env : binding Env.t) : (pexpression, cexpression) chec
       List.fold_right f rest (Ok [])
     in
     let celements = cfirst :: crest in
-    let length = Int64.of_int @@ List.length celements in
-    CArray { elements = celements; ctype = CArray_type { element_type; length } }
+    CArray { elements = celements; ctype = CArray_type element_type }
   | PRecord { name; fields } ->
     let* ctype = lookup_type name in
     let* record_fields =
@@ -131,7 +124,7 @@ let rec check_expression (env : binding Env.t) : (pexpression, cexpression) chec
     let* cindex = check_expression env index in
     begin
       match cexpression_type cexpression with
-      | CSlice_type element_type | CArray_type { element_type; _ } ->
+      | CArray_type element_type ->
         Ok (CIndex { expression = cexpression; index = cindex; ctype = element_type })
       | _ -> Error Type_error
     end

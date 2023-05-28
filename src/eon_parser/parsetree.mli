@@ -19,11 +19,7 @@ and pdefinition =
 and ptype =
   | PNamed_type of string
   | PPointer_type of ptype
-  | PSlice_type of ptype
-  | PArray_type of
-      { element_type : ptype
-      ; length : int64
-      }
+  | PArray_type of ptype
   | PFunction_type of
       { parameters : ptype list
       ; return_type : ptype
@@ -108,8 +104,6 @@ and binary_operator =
   | Multiply
   | Divide
   | Remainder
-
-
 
 val pp_pprogram : Format.formatter -> pprogram -> unit
 
