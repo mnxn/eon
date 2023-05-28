@@ -1,14 +1,11 @@
-type position =
-  { line : int
-  ; column : int
-  ; offset : int
+type range =
+  { start_pos : Lexing.position
+  ; end_pos : Lexing.position
   }
 
-type range =
-  { file_name : string
-  ; start_pos : position
-  ; end_pos : position
-  }
+val pos : Lexing.position -> range
+
+val loc : Lexing.position * Lexing.position -> range
 
 type error =
   | Lexer_error of range

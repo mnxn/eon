@@ -51,33 +51,10 @@ let parse lexer lexbuf =
   let parse = MenhirLib.Convert.Simplified.traditional2revised Parser.program in
   try Ok (parse lexer) with
   | Lexer.Error ->
-    let start, _ = Sedlexing.lexing_positions lexbuf in
-    let file_name = start.pos_fname in
-    let start_pos =
-      { Eon_report.line = start.pos_lnum
-      ; column = start.pos_cnum - start.pos_bol + 1
-      ; offset = start.pos_cnum
-      }
-    in
-    let end_pos =
-      { start_pos with column = start_pos.column + 1; offset = start_pos.offset + 1 }
-    in
-    let range = { Eon_report.file_name; start_pos; end_pos } in
+    let start_pos, _ = Sedlexing.lexing_positions lexbuf in
+    let range = Eon_report.pos start_pos in
     Error (Eon_report.Lexer_error range)
   | Parser.Error ->
-    let start, curr = Sedlexing.lexing_positions lexbuf in
-    let file_name = start.pos_fname in
-    let start_pos =
-      { Eon_report.line = start.pos_lnum
-      ; column = start.pos_cnum - start.pos_bol + 1
-      ; offset = start.pos_cnum
-      }
-    in
-    let end_pos =
-      { Eon_report.line = curr.pos_lnum
-      ; column = curr.pos_cnum - start.pos_bol + 1
-      ; offset = curr.pos_cnum
-      }
-    in
-    let range = { Eon_report.file_name; start_pos; end_pos } in
+    let start_pos, end_pos = Sedlexing.lexing_positions lexbuf in
+    let range = Eon_report.loc (start_pos, end_pos) in
     Error (Eon_report.Parser_error range)
