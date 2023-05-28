@@ -1,7 +1,16 @@
-type range =
-  { start_pos : Lexing.position
-  ; end_pos : Lexing.position
+type position = Lexing.position =
+  { pos_fname : string
+  ; pos_lnum : int
+  ; pos_bol : int
+  ; pos_cnum : int
   }
+[@@deriving show]
+
+type range =
+  { start_pos : position
+  ; end_pos : position
+  }
+[@@deriving show]
 
 let pos (start_pos : Lexing.position) =
   let end_pos = { start_pos with pos_cnum = start_pos.pos_cnum + 1 } in

@@ -3,6 +3,10 @@ type range =
   ; end_pos : Lexing.position
   }
 
+val pp_range : Format.formatter -> range -> unit
+
+val show_range : range -> string
+
 val pos : Lexing.position -> range
 
 val loc : Lexing.position * Lexing.position -> range
