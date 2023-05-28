@@ -51,8 +51,7 @@ let parse lexer lexbuf =
   let parse = MenhirLib.Convert.Simplified.traditional2revised Parser.program in
   try Ok (parse lexer) with
   | Lexer.Error ->
-    let start_pos, _ = Sedlexing.lexing_positions lexbuf in
-    let range = Eon_report.pos start_pos in
+    let range = Sedlexing.lexing_positions lexbuf in
     Error (Eon_report.Lexer_error range)
   | Parser.Error ->
     let range = Sedlexing.lexing_positions lexbuf in

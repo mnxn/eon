@@ -4,8 +4,6 @@ val pp_range : Format.formatter -> range -> unit
 
 val show_range : range -> string
 
-val pos : Lexing.position -> range
-
 type error =
   | Lexer_error of range
   | Parser_error of range

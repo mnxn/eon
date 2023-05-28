@@ -8,10 +8,6 @@ type position = Lexing.position =
 
 type range = position * position [@@deriving show]
 
-let pos (start_pos : Lexing.position) =
-  let end_pos = { start_pos with pos_cnum = start_pos.pos_cnum + 1 } in
-  start_pos, end_pos
-
 type error =
   | Lexer_error of range
   | Parser_error of range
@@ -73,7 +69,8 @@ let pp_error file ppf e =
       let pos = Int64.to_int (In_channel.pos file) in
       if pos - 1 = start_pos.pos_cnum then Format.pp_print_string ppf Colors.red;
       Option.iter (Format.pp_print_char ppf) !current;
-      if pos = end_pos.pos_cnum then Format.pp_print_string ppf Colors.clear;
+      if pos = end_pos.pos_cnum || start_pos = end_pos then
+        Format.pp_print_string ppf Colors.clear;
 
       current := In_channel.input_char file
     done;
