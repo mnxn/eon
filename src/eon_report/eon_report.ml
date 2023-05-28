@@ -4,13 +4,13 @@ type position = Lexing.position =
   ; pos_bol : int
   ; pos_cnum : int
   }
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 type range =
   { start_pos : position
   ; end_pos : position
   }
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 let pos (start_pos : Lexing.position) =
   let end_pos = { start_pos with pos_cnum = start_pos.pos_cnum + 1 } in
