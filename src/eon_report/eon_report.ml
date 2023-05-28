@@ -6,17 +6,11 @@ type position = Lexing.position =
   }
 [@@deriving show { with_path = false }]
 
-type range =
-  { start_pos : position
-  ; end_pos : position
-  }
-[@@deriving show { with_path = false }]
+type range = position * position [@@deriving show]
 
 let pos (start_pos : Lexing.position) =
   let end_pos = { start_pos with pos_cnum = start_pos.pos_cnum + 1 } in
-  { start_pos; end_pos }
-
-let loc (start_pos, end_pos) = { start_pos; end_pos }
+  start_pos, end_pos
 
 type error =
   | Lexer_error of range
@@ -26,7 +20,7 @@ type error =
 let range = function
   | Lexer_error r -> r
   | Parser_error r -> r
-  | Type_error -> { start_pos = Lexing.dummy_pos; end_pos = Lexing.dummy_pos }
+  | Type_error -> Lexing.dummy_pos, Lexing.dummy_pos
 
 let column { Lexing.pos_cnum; pos_bol; _ } = pos_cnum - pos_bol + 1
 
@@ -42,7 +36,7 @@ let rec skip_n_lines ic n =
   end
 
 let pp_error file ppf e =
-  let { start_pos; end_pos } = range e in
+  let start_pos, end_pos = range e in
   Format.fprintf ppf "File \"%s\", " start_pos.pos_fname;
 
   if start_pos.pos_lnum = end_pos.pos_lnum then
