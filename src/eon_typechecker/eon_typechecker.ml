@@ -34,6 +34,8 @@ let ( let* ) r f = Result.bind r f
 
 let ( let+ ) r f = Result.map f r
 
+let type_error = Error Eon_report.Type_error
+
 module Primitive = struct
   let unit = CPrimitive_type "unit"
 
@@ -63,7 +65,7 @@ let rec check_type env : (ptype, ctype) check =
   | PNamed_type { name; range = _ } -> begin
     match Env.lookup_type name env with
     | Some t -> Ok t
-    | None -> Error Type_error
+    | None -> type_error
   end
   | PPointer_type { underlying_type; range = _ } ->
     let+ ctype = check_type env underlying_type in
@@ -82,7 +84,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       begin
         match Env.lookup_value name env with
         | Some t -> Ok t
-        | None -> Error Eon_report.Type_error
+        | None -> type_error
       end
     in
     CIdentifier { name; ctype }
@@ -91,7 +93,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
   | PInteger { value; range = _ } -> Ok (CInteger { value; ctype = Primitive.int })
   | PFloat { value; range = _ } -> Ok (CFloat { value; ctype = Primitive.float })
   | PString { value; range = _ } -> Ok (CString { value; ctype = Primitive.string })
-  | PArray { elements = []; range = _ } -> Error Type_error
+  | PArray { elements = []; range = _ } -> type_error
   | PArray { elements = first :: rest; range = _ } ->
     let* cfirst = check_expression env first in
     let element_type = cexpression_type cfirst in
@@ -102,7 +104,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
           if cexpression_type cexpression = element_type then
             Ok (cexpression :: acc)
           else
-            Error Type_error
+            type_error
         | e -> e
       in
       List.fold_right f rest (Ok [])
@@ -114,13 +116,13 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       begin
         match Env.lookup_type name env with
         | Some t -> Ok t
-        | None -> Error Eon_report.Type_error
+        | None -> type_error
       end
     in
     let* record_fields =
       match ctype with
       | CRecord_type { name = _; fields } -> Ok fields
-      | _ -> Error Eon_report.Type_error
+      | _ -> type_error
     in
     let+ cfields =
       let field_counter = Hashtbl.create 10 in
@@ -128,13 +130,13 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         | Ok acc ->
           let* cvalue = check_expression env value in
           if Option.is_none @@ Hashtbl.find_opt field_counter name then
-            Error Type_error
+            type_error
           else begin
             Hashtbl.add field_counter name ();
             match List.assoc_opt name record_fields with
             | Some expected when cexpression_type cvalue = expected ->
               Ok ((name, cvalue) :: acc)
-            | _ -> Error Type_error
+            | _ -> type_error
           end
         | e -> e
       in
@@ -148,7 +150,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       match cexpression_type cexpression with
       | CArray_type element_type ->
         Ok (CIndex { expression = cexpression; index = cindex; ctype = element_type })
-      | _ -> Error Type_error
+      | _ -> type_error
     end
   | PAccess { expression; field; range = _ } ->
     let* cexpression = check_expression env expression in
@@ -158,9 +160,9 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         match List.assoc_opt field fields with
         | Some field_type ->
           Ok (CAccess { expression = cexpression; field; ctype = field_type })
-        | None -> Error Type_error
+        | None -> type_error
       end
-      | _ -> Error Type_error
+      | _ -> type_error
     end
   | PAssign { target; source; range = _ } ->
     let* ctarget = check_expression env target in
@@ -168,13 +170,13 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
     if cexpression_type ctarget = cexpression_type csource then
       Ok (CAssign { target = ctarget; source = csource; ctype = Primitive.unit })
     else
-      Error Type_error
+      type_error
   | PApply { func; arguments; range = _ } ->
     let* cfunc = check_expression env func in
     let* cfunc_params, cfunc_result =
       match cexpression_type cfunc with
       | CFunction_type { parameters; return_type } -> Ok (parameters, return_type)
-      | _ -> Error Eon_report.Type_error
+      | _ -> type_error
     in
     let+ cargs =
       let f expected arg = function
@@ -184,7 +186,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
           if actual = expected then
             Ok (carg :: acc)
           else
-            Error Eon_report.Type_error
+            type_error
         | e -> e
       in
       List.fold_right2 f cfunc_params arguments (Ok [])
@@ -199,17 +201,17 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         if ctype = Primitive.bool then
           Ok Primitive.bool
         else
-          Error Eon_report.Type_error
+          type_error
       | Negate ->
         if ctype = Primitive.int || ctype = Primitive.float then
           Ok ctype
         else
-          Error Type_error
+          type_error
       | Address_of -> Ok (CPointer_type ctype)
       | Dereference -> begin
         match ctype with
         | CPointer_type underlying -> Ok underlying
-        | _ -> Error Type_error
+        | _ -> type_error
       end
     in
     CUnary_operator { operator; expression = cexpression; ctype = cresult_type }
@@ -224,12 +226,12 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         if cleft_type = Primitive.bool && cright_type = Primitive.bool then
           Ok Primitive.bool
         else
-          Error Eon_report.Type_error
+          type_error
       | Equal | Not_equal ->
         if cleft_type = cright_type then
           Ok cleft_type
         else
-          Error Eon_report.Type_error
+          type_error
       | Less
       | Less_equal
       | Greater
@@ -245,7 +247,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         then
           Ok cleft_type
         else
-          Error Eon_report.Type_error
+          type_error
     in
     CBinary_operator { left = cleft; operator; right = cright; ctype = cresult_type }
   | PBlock { body; range = _ } ->
@@ -264,7 +266,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
            ; ctype = Primitive.unit
            })
     else
-      Error Type_error
+      type_error
   | PLet { name; value_type = None; value; range = _ } ->
     let+ cvalue = check_expression env value in
     let cvalue_type = cexpression_type cvalue in
@@ -276,7 +278,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       if ctype = Primitive.bool then
         Ok ()
       else
-        Error Eon_report.Type_error
+        type_error
     in
     let* ctrue_branch = check_expression env true_branch in
     let ctrue_type = cexpression_type ctrue_branch in
@@ -291,7 +293,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
            ; ctype = ctrue_type
            })
     else
-      Error Type_error
+      type_error
   | PClosure { parameters; return_type; body; range = _ } ->
     let* cparameters =
       let f (name, ptype) = function
@@ -313,7 +315,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         if cbody_type = creturn_type then
           Ok creturn_type
         else
-          Error Eon_report.Type_error
+          type_error
     in
     let ctype =
       CFunction_type { parameters = List.map snd cparameters; return_type = creturn_type }
@@ -336,7 +338,7 @@ and check_block (env : Env.t) : (pblock, cblock) check =
           if cvalue_type_actual = cvalue_type_expected then
             Ok cvalue_type_expected
           else
-            Error Type_error
+            type_error
       in
       let+ cexpressions = check_statements (Env.add_value name cvalue_type env) stats in
       CLet { name; value_type = cvalue_type; value = cexpression; ctype = Primitive.unit }
@@ -397,7 +399,7 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
           in
           Ok (name, `Value ctype, cfunction)
         else
-          Error Eon_report.Type_error
+          type_error
       | PType_alias { name; value; range = _ } ->
         let+ ctype = check_type env value in
         name, `Type ctype, CType_alias { name; value = ctype }
