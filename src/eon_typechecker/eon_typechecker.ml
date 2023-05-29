@@ -21,7 +21,8 @@ module Primitive = struct
   let string = CPrimitive_type "string"
 
   let env =
-    Env.add_types
+    Env.add_all
+      Type
       [ "unit", unit; "bool", bool; "int", int; "float", float; "string", string ]
       Env.empty
 end
@@ -36,7 +37,7 @@ let rec check_type env : (ptype, ctype) check =
   in
   function
   | PNamed_type { name; range = _ } -> begin
-    match Env.lookup_type name env with
+    match Env.lookup Type name env with
     | Some t -> Ok t
     | None -> type_error
   end
@@ -55,7 +56,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
   | PIdentifier { name; range = _ } ->
     let+ ctype =
       begin
-        match Env.lookup_value name env with
+        match Env.lookup Value name env with
         | Some t -> Ok t
         | None -> type_error
       end
@@ -87,7 +88,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
   | PRecord { name; fields; range = _ } ->
     let* ctype =
       begin
-        match Env.lookup_type name env with
+        match Env.lookup Type name env with
         | Some t -> Ok t
         | None -> type_error
       end
@@ -277,7 +278,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       in
       List.fold_right f parameters (Ok [])
     in
-    let body_env = Env.add_values cparameters env in
+    let body_env = Env.add_all Value cparameters env in
     let* cbody = check_expression body_env body in
     let cbody_type = cexpression_type cbody in
     let* creturn_type =
@@ -313,7 +314,7 @@ and check_block (env : Env.t) : (pblock, cblock) check =
           else
             type_error
       in
-      let+ cexpressions = check_statements (Env.add_value name cvalue_type env) stats in
+      let+ cexpressions = check_statements (Env.add Value name cvalue_type env) stats in
       CLet { name; value_type = cvalue_type; value = cexpression; ctype = Primitive.unit }
       :: cexpressions
     | stat :: stats ->
@@ -345,7 +346,7 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
   function
   | [] -> Ok []
   | pdef :: pdefs ->
-    let* name, binding, cdef =
+    let* binding_type, name, value, cdef =
       match pdef with
       | PFunction { name; parameters; return_type; body; range = _ } ->
         let* cparameters =
@@ -358,7 +359,7 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
           List.fold_right f parameters (Ok [])
         in
         let* creturn_type = check_type env return_type in
-        let body_env = Env.add_values cparameters env in
+        let body_env = Env.add_all Value cparameters env in
         let* cbody = check_expression body_env body in
         let cbody_type = cexpression_type cbody in
         if cbody_type = creturn_type then
@@ -370,23 +371,20 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
             CFunction_type
               { parameters = List.map snd cparameters; return_type = creturn_type }
           in
-          Ok (name, `Value ctype, cfunction)
+          Ok (Env.Value, name, ctype, cfunction)
         else
           type_error
       | PType_alias { name; value; range = _ } ->
         let+ ctype = check_type env value in
-        name, `Type ctype, CType_alias { name; value = ctype }
+        Env.Type, name, ctype, CType_alias { name; value = ctype }
       | PType_record { name; fields; range = _ } ->
         let+ cfields = check_fields fields in
-        ( name
-        , `Type (CRecord_type { name; fields = cfields })
+        ( Env.Type
+        , name
+        , CRecord_type { name; fields = cfields }
         , CType_record { name; fields = cfields } )
     in
-    let new_env =
-      match binding with
-      | `Type t -> Env.add_type name t env
-      | `Value v -> Env.add_value name v env
-    in
+    let new_env = Env.add binding_type name value env in
     let+ crest = check_definitions new_env pdefs in
     cdef :: crest
 

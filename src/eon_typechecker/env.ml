@@ -5,20 +5,24 @@ type t =
   ; values : Typedtree.ctype Map.t
   }
 
+type binding_type =
+  | Type
+  | Value
+
 let empty = { types = Map.empty; values = Map.empty }
 
-let add_value name value env = { env with values = Map.add name value env.values }
+let add binding_type name value env =
+  match binding_type with
+  | Type -> { env with types = Map.add name value env.types }
+  | Value -> { env with values = Map.add name value env.values }
 
-let add_values bindings env =
+let add_all binding_type bindings env =
   let bindings = List.to_seq bindings in
-  { env with values = Map.add_seq bindings env.values }
+  match binding_type with
+  | Type -> { env with types = Map.add_seq bindings env.types }
+  | Value -> { env with values = Map.add_seq bindings env.values }
 
-let add_type name value env = { env with types = Map.add name value env.types }
-
-let add_types bindings env =
-  let bindings = List.to_seq bindings in
-  { env with types = Map.add_seq bindings env.types }
-
-let lookup_value name env = Map.find_opt name env.values
-
-let lookup_type name env = Map.find_opt name env.types
+let lookup binding_type name env =
+  match binding_type with
+  | Type -> Map.find_opt name env.types
+  | Value -> Map.find_opt name env.values
