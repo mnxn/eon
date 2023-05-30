@@ -11,19 +11,19 @@ type range = position * position [@@deriving show]
 type error =
   | Lexer_error of range
   | Parser_error of range
-  | Type_error
+  | Type_error of range
 
 let range = function
   | Lexer_error r -> r
   | Parser_error r -> r
-  | Type_error -> Lexing.dummy_pos, Lexing.dummy_pos
+  | Type_error r -> r
 
 let column { Lexing.pos_cnum; pos_bol; _ } = pos_cnum - pos_bol + 1
 
 let message = function
   | Lexer_error _ -> "Lexing error"
   | Parser_error _ -> "Parsing error"
-  | Type_error -> "Type error"
+  | Type_error _ -> "Type error"
 
 let rec skip_n_lines ic n =
   if n > 0 then begin

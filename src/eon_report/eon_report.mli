@@ -7,7 +7,7 @@ val show_range : range -> string
 type error =
   | Lexer_error of range
   | Parser_error of range
-  | Type_error
+  | Type_error of range
 
 val pp_error : in_channel -> Format.formatter -> error -> unit
 

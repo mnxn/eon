@@ -148,3 +148,32 @@ and binary_operator =
   | Multiply
   | Divide
   | Remainder
+
+let pdefinition_range : pdefinition -> Eon_report.range = function
+  | PFunction { range; _ } | PType_alias { range; _ } | PType_record { range; _ } -> range
+
+let ptype_range : ptype -> Eon_report.range = function
+  | PNamed_type { range; _ }
+  | PPointer_type { range; _ }
+  | PArray_type { range; _ }
+  | PFunction_type { range; _ } -> range
+
+let pexpression_range : pexpression -> Eon_report.range = function
+  | PIdentifier { range; _ }
+  | PUnit { range; _ }
+  | PBoolean { range; _ }
+  | PInteger { range; _ }
+  | PFloat { range; _ }
+  | PString { range; _ }
+  | PArray { range; _ }
+  | PRecord { range; _ }
+  | PIndex { range; _ }
+  | PAccess { range; _ }
+  | PAssign { range; _ }
+  | PApply { range; _ }
+  | PUnary_operator { range; _ }
+  | PBinary_operator { range; _ }
+  | PBlock { range; _ }
+  | PLet { range; _ }
+  | PIf { range; _ }
+  | PClosure { range; _ } -> range

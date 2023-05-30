@@ -176,3 +176,9 @@ val show_unary_operator : unary_operator -> string
 val pp_binary_operator : Format.formatter -> binary_operator -> unit
 
 val show_binary_operator : binary_operator -> string
+
+val pdefinition_range : pdefinition -> Eon_report.range
+
+val ptype_range : ptype -> Eon_report.range
+
+val pexpression_range : pexpression -> Eon_report.range
