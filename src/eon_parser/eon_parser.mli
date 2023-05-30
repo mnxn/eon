@@ -49,6 +49,8 @@ val show_token : token -> string
 
 val lex : Sedlexing.lexbuf -> token
 
+val lex_all : Sedlexing.lexbuf -> (token list, Eon_report.error) result
+
 val parse
   :  (Sedlexing.lexbuf -> token)
   -> Sedlexing.lexbuf

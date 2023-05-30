@@ -44,6 +44,17 @@ type token = Token.token =
   | AMPERSAND
 [@@deriving show { with_path = false }]
 
+let lex_all lexbuf =
+  let rec go acc =
+    match Lexer.lex lexbuf with
+    | EOF -> List.rev acc
+    | tok -> go (tok :: acc)
+  in
+  try Ok (go []) with
+  | Lexer.Error ->
+    let range = Sedlexing.lexing_positions lexbuf in
+    Error (Eon_report.Lexer_error range)
+
 let lex = Lexer.lex
 
 let parse lexer lexbuf =
