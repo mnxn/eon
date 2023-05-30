@@ -80,4 +80,4 @@ let pp_error file ppf e =
   done;
   In_channel.seek file old_pos;
 
-  Format.fprintf ppf "Error: %s\n" (message e)
+  Format.fprintf ppf "Error: %s@." (message e)
