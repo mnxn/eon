@@ -57,9 +57,9 @@ let lex_all lexbuf =
 
 let lex = Lexer.lex
 
-let parse lexer lexbuf =
+let parse parser lexer lexbuf =
   let lexer = Sedlexing.with_tokenizer lexer lexbuf in
-  let parse = MenhirLib.Convert.Simplified.traditional2revised Parser.program in
+  let parse = MenhirLib.Convert.Simplified.traditional2revised parser in
   try Ok (parse lexer) with
   | Lexer.Error ->
     let range = Sedlexing.lexing_positions lexbuf in
@@ -67,3 +67,7 @@ let parse lexer lexbuf =
   | Parser.Error ->
     let range = Sedlexing.lexing_positions lexbuf in
     Error (Eon_report.Parser_error range)
+
+let parse_program = parse Parser.program
+
+let parse_expression = parse Parser.expression_eof

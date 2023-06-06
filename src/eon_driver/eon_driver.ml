@@ -19,15 +19,29 @@ let lex filename =
   with_lexbuf filename ~action ~ok
 
 let parse filename =
-  let action = Eon_parser.parse Eon_parser.lex in
+  let action = Eon_parser.parse_program Eon_parser.lex in
   let ok = Format.printf "%a@." Eon_parser.Parsetree.pp_pprogram in
+  with_lexbuf filename ~action ~ok
+
+let parse_expression filename =
+  let action = Eon_parser.parse_expression Eon_parser.lex in
+  let ok = Format.printf "%a@." Eon_parser.Parsetree.pp_pexpression in
   with_lexbuf filename ~action ~ok
 
 let check filename =
   let action lexbuf =
-    Result.bind (Eon_parser.parse Eon_parser.lex lexbuf) Eon_typechecker.check
+    Result.bind (Eon_parser.parse_program Eon_parser.lex lexbuf) Eon_typechecker.check
   in
   let ok = Format.printf "%a@." Eon_typechecker.Typedtree.pp_cprogram in
+  with_lexbuf filename ~action ~ok
+
+let check_expression filename =
+  let action lexbuf =
+    Result.bind
+      (Eon_parser.parse_expression Eon_parser.lex lexbuf)
+      (Eon_typechecker.check_expression Eon_typechecker.Primitive.env)
+  in
+  let ok = Format.printf "%a@." Eon_typechecker.Typedtree.pp_cexpression in
   with_lexbuf filename ~action ~ok
 
 let run = function
@@ -37,4 +51,6 @@ let run = function
   | [ "lex"; filename ] -> lex filename
   | [ "parse"; filename ] -> parse filename
   | [ "check"; filename ] -> check filename
+  | [ "parse-expression"; filename ] -> parse_expression filename
+  | [ "check-expression"; filename ] -> check_expression filename
   | command :: _ -> Printf.eprintf "unknown command: %s\n" command

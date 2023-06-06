@@ -3,6 +3,7 @@ open Parsetree
 %}
 
 %start <Parsetree.pprogram> program
+%start <Parsetree.pexpression> expression_eof
 %%
 
 program:
@@ -34,6 +35,10 @@ typ:
     { PArray_type { element_type; range = $loc } }
   | "(" parameters=separated_list(",", typ) ")" "->" return_type=typ
     { PFunction_type { parameters; return_type; range = $loc } }
+
+expression_eof:
+  | e=expression EOF
+    { e }
 
 expression:
   | name=IDENTIFIER
