@@ -1,17 +1,18 @@
-let with_lexbuf ~action ~ok ?error filename =
-  let file =
-    if filename = "-" then
-      stdin
-    else
-      In_channel.open_bin filename
+let with_lexbuf ~action ~ok ?error =
+  let go filename gen =
+    let gen = Gen.Restart.of_gen gen in
+    let lexbuf = Sedlexing.Utf8.from_gen (gen ()) in
+    Sedlexing.set_filename lexbuf filename;
+    let error =
+      match error with
+      | Some error -> error
+      | None -> Format.eprintf "%a" (Eon_report.pp_error (gen ()))
+    in
+    Result.fold (action lexbuf) ~ok ~error
   in
-  let lexbuf = Sedlexing.Utf8.from_channel file in
-  Sedlexing.set_filename lexbuf filename;
-  let error =
-    Option.value error ~default:(Format.eprintf "%a" (Eon_report.pp_error file))
-  in
-  Result.fold (action lexbuf) ~ok ~error;
-  if file <> stdin then close_in file
+  function
+  | "-" -> go "<stdin>" (fun () -> In_channel.input_char stdin)
+  | filename -> Gen.IO.with_in filename (go filename)
 
 let lex filename =
   let action = Eon_parser.lex_all in

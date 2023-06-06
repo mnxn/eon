@@ -1,4 +1,4 @@
 (library
  (public_name eon.driver)
  (name eon_driver)
- (libraries eon.parser eon.typechecker eon.report sedlex))
+ (libraries eon.parser eon.typechecker eon.report gen sedlex))

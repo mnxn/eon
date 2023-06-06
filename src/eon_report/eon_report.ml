@@ -25,13 +25,7 @@ let message = function
   | Parser_error _ -> "Parsing error"
   | Type_error _ -> "Type error"
 
-let rec skip_n_lines ic n =
-  if n > 0 then begin
-    ignore (In_channel.input_line ic);
-    skip_n_lines ic (n - 1)
-  end
-
-let pp_error file ppf e =
+let pp_error (gen : char Gen.t) ppf e =
   let start_pos, end_pos = range e in
   Format.fprintf ppf "File \"%s\", " start_pos.pos_fname;
 
@@ -45,39 +39,35 @@ let pp_error file ppf e =
   else
     Format.fprintf ppf "characters %d-%d:\n" (column start_pos) (column end_pos);
 
-  let in_range pos =
-    let pos = Int64.to_int pos in
-    start_pos.pos_cnum <= pos && pos <= end_pos.pos_cnum
-  in
+  let in_range pos = start_pos.pos_cnum <= pos && pos <= end_pos.pos_cnum in
   let max_line = Int.to_string end_pos.pos_lnum in
   let max_line_digits = String.length max_line in
 
-  let old_pos = In_channel.pos file in
-  In_channel.seek file 0L;
-  skip_n_lines file (start_pos.pos_lnum - 1);
+  let gen = Gen.drop start_pos.pos_bol gen in
+  let pos = ref start_pos.pos_bol in
   for line = start_pos.pos_lnum to end_pos.pos_lnum do
-    let current = ref (In_channel.input_char file) in
+    let current = ref (Gen.get gen) in
+    incr pos;
     Format.fprintf ppf "%*d | " max_line_digits line;
 
-    if in_range (In_channel.pos file) then Format.pp_print_string ppf Colors.red;
+    if in_range !pos then Format.pp_print_string ppf Colors.red;
     while
       match !current with
       | None -> false
       | Some '\n' -> false
       | _ -> true
     do
-      let pos = Int64.to_int (In_channel.pos file) in
-      if pos - 1 = start_pos.pos_cnum then Format.pp_print_string ppf Colors.red;
+      if !pos - 1 = start_pos.pos_cnum then Format.pp_print_string ppf Colors.red;
       Option.iter (Format.pp_print_char ppf) !current;
-      if pos = end_pos.pos_cnum || start_pos = end_pos then
+      if !pos = end_pos.pos_cnum || start_pos = end_pos then
         Format.pp_print_string ppf Colors.clear;
 
-      current := In_channel.input_char file
+      current := Gen.get gen;
+      incr pos
     done;
-    if in_range (In_channel.pos file) then Format.pp_print_string ppf Colors.clear;
+    if in_range !pos then Format.pp_print_string ppf Colors.clear;
 
     Format.pp_print_newline ppf ()
   done;
-  In_channel.seek file old_pos;
 
   Format.fprintf ppf "Error: %s@." (message e)

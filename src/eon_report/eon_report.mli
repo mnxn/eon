@@ -9,7 +9,7 @@ type error =
   | Parser_error of range
   | Type_error of range
 
-val pp_error : in_channel -> Format.formatter -> error -> unit
+val pp_error : char Gen.t -> Format.formatter -> error -> unit
 
 val range : error -> range
 

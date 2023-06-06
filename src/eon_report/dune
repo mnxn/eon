@@ -2,4 +2,5 @@
  (public_name eon.report)
  (name eon_report)
  (preprocess
-  (pps ppx_deriving.show)))
+  (pps ppx_deriving.show))
+ (libraries gen))
