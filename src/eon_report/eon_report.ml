@@ -20,10 +20,15 @@ let range = function
 
 let column { Lexing.pos_cnum; pos_bol; _ } = pos_cnum - pos_bol + 1
 
-let message = function
+let prefix = function
   | Lexer_error _ -> "Lexing error"
   | Parser_error _ -> "Parsing error"
   | Type_error _ -> "Type error"
+
+let details = function
+  | Lexer_error _ -> None
+  | Parser_error _ -> None
+  | Type_error _ -> None
 
 let pp_error (gen : char Gen.t) ppf e =
   let start_pos, end_pos = range e in
@@ -70,4 +75,6 @@ let pp_error (gen : char Gen.t) ppf e =
     Format.pp_print_newline ppf ()
   done;
 
-  Format.fprintf ppf "Error: %s@." (message e)
+  match prefix e, details e with
+  | p, Some d -> Format.fprintf ppf "%s: %s@." p d
+  | p, None -> Format.fprintf ppf "%s@." p

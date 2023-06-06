@@ -13,4 +13,6 @@ val pp_error : char Gen.t -> Format.formatter -> error -> unit
 
 val range : error -> range
 
-val message : error -> string
+val prefix : error -> string
+
+val details : error -> string option
