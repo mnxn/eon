@@ -137,3 +137,22 @@ let cexpression_type (cexpr : cexpression) =
   | CLet { ctype; _ }
   | CIf { ctype; _ }
   | CClosure { ctype; _ } -> ctype
+
+let rec print_ctype ppf = function
+  | CPrimitive_type name -> Format.fprintf ppf "%s" name
+  | CPointer_type underlying -> Format.fprintf ppf "^%a" print_ctype underlying
+  | CArray_type element_type -> Format.fprintf ppf "[%a]" print_ctype element_type
+  | CFunction_type { parameters = [ param ]; return_type } ->
+    Format.fprintf ppf "%a -> %a" print_ctype param print_ctype return_type
+  | CFunction_type { parameters; return_type } ->
+    Format.fprintf ppf "(";
+    print_function_parameters ppf parameters;
+    Format.fprintf ppf ") -> %a" print_ctype return_type
+  | CRecord_type { name; _ } -> Format.fprintf ppf "%s" name
+
+and print_function_parameters ppf = function
+  | [] -> ()
+  | [ param ] -> print_ctype ppf param
+  | param :: params ->
+    Format.fprintf ppf "%a, " print_ctype param;
+    print_function_parameters ppf params

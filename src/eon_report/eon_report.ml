@@ -8,27 +8,141 @@ type position = Lexing.position =
 
 type range = position * position [@@deriving show]
 
+type printable =
+  | P :
+      { value : 'a
+      ; pp : Format.formatter -> 'a -> unit
+      }
+      -> printable
+
+let box_pp value pp = P { value; pp }
+
+let pp_printable ppf (P { value; pp }) = pp ppf value
+
+type type_error =
+  | Type_not_in_scope of string
+  | Value_not_in_scope of string
+  | Type_mismatch of
+      { expected : printable
+      ; actual : printable
+      }
+  | Not_numeric of printable
+  | Not_pointer of printable
+  | Not_array of printable
+  | Empty_array
+  | Not_record of printable
+  | No_field of
+      { actual : printable
+      ; field : string
+      }
+  | Initializer_no_field of
+      { expected : printable
+      ; field : string
+      }
+  | Initializer_missing_field_value of
+      { expected : printable
+      ; field : string
+      }
+  | Initializer_duplicate_field of
+      { expected : printable
+      ; field : string
+      }
+  | Not_function of printable
+  | Argument_count_mismatch of
+      { expected : int
+      ; actual : int
+      }
+  | If_branch_mismatch of
+      { true_branch : printable
+      ; false_branch : printable
+      }
+
 type error =
   | Lexer_error of range
   | Parser_error of range
-  | Type_error of range
+  | Type_error of
+      { type_error : type_error
+      ; range : range
+      }
 
 let range = function
   | Lexer_error r -> r
   | Parser_error r -> r
-  | Type_error r -> r
+  | Type_error { range; _ } -> range
 
 let column { Lexing.pos_cnum; pos_bol; _ } = pos_cnum - pos_bol + 1
 
-let prefix = function
-  | Lexer_error _ -> "Lexing error"
-  | Parser_error _ -> "Parsing error"
-  | Type_error _ -> "Type error"
-
-let details = function
-  | Lexer_error _ -> None
-  | Parser_error _ -> None
-  | Type_error _ -> None
+let pp_details ppf = function
+  | Lexer_error _ -> Format.fprintf ppf "Lexing error"
+  | Parser_error _ -> Format.fprintf ppf "Parsing error"
+  | Type_error { type_error; _ } ->
+    Format.fprintf ppf "Type error: ";
+    begin
+      match type_error with
+      | Type_not_in_scope name -> Format.fprintf ppf "type %s is not in scope" name
+      | Value_not_in_scope name -> Format.fprintf ppf "value %s is not in scope" name
+      | Type_mismatch { expected; actual } ->
+        Format.fprintf
+          ppf
+          "expected type %a, but got %a"
+          pp_printable
+          expected
+          pp_printable
+          actual
+      | Not_numeric actual ->
+        Format.fprintf
+          ppf
+          "expected numeric type (int or float), but got %a"
+          pp_printable
+          actual
+      | Not_pointer actual ->
+        Format.fprintf ppf "expected pointer type, but got %a" pp_printable actual
+      | Not_array actual ->
+        Format.fprintf ppf "expected array type, but got %a" pp_printable actual
+      | Empty_array -> Format.fprintf ppf "cannot infer type of empty array"
+      | Not_record actual ->
+        Format.fprintf ppf "expected record type, but got %a" pp_printable actual
+      | No_field { actual; field } ->
+        Format.fprintf
+          ppf
+          "value of record type %a has no field %s"
+          pp_printable
+          actual
+          field
+      | Initializer_no_field { expected; field } ->
+        Format.fprintf
+          ppf
+          "initializer for record type %a has a value for nonexistent field %s"
+          pp_printable
+          expected
+          field
+      | Initializer_missing_field_value { expected; field } ->
+        Format.fprintf
+          ppf
+          "initializer for record type %a is missing a value for field %s"
+          pp_printable
+          expected
+          field
+      | Initializer_duplicate_field { expected; field } ->
+        Format.fprintf
+          ppf
+          "initializer for record type %a has a duplicate value for field %s"
+          pp_printable
+          expected
+          field
+      | Not_function actual ->
+        Format.fprintf ppf "expected function type, but got %a" pp_printable actual
+      | Argument_count_mismatch { expected; actual } ->
+        Format.fprintf ppf "expected %d arguments, but got %d" expected actual
+      | If_branch_mismatch { true_branch; false_branch } ->
+        Format.fprintf
+          ppf
+          "true branch has type %a, but false branch has type %a"
+          pp_printable
+          true_branch
+          pp_printable
+          false_branch
+    end
 
 let pp_error (gen : char Gen.t) ppf e =
   let start_pos, end_pos = range e in
@@ -75,6 +189,4 @@ let pp_error (gen : char Gen.t) ppf e =
     Format.pp_print_newline ppf ()
   done;
 
-  match prefix e, details e with
-  | p, Some d -> Format.fprintf ppf "%s: %s@." p d
-  | p, None -> Format.fprintf ppf "%s@." p
+  Format.fprintf ppf "%a@." pp_details e

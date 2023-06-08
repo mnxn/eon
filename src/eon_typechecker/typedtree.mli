@@ -138,3 +138,5 @@ val pp_cblock : Format.formatter -> cblock -> unit
 val show_cblock : cblock -> string
 
 val cexpression_type : cexpression -> ctype
+
+val print_ctype : Format.formatter -> ctype -> unit

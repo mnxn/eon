@@ -1,5 +1,6 @@
 open Eon_parser.Parsetree
 open Typedtree
+open Eon_report
 
 type ('parsed, 'typed) check = 'parsed -> ('typed, Eon_report.error) result
 
@@ -7,7 +8,12 @@ let ( let* ) r f = Result.bind r f
 
 let ( let+ ) r f = Result.map f r
 
-let type_error range = Error (Eon_report.Type_error range)
+let type_error range type_error = Error (Type_error { type_error; range })
+
+let box_ctype ctype = box_pp ctype print_ctype
+
+let type_mismatch expected actual =
+  Type_mismatch { expected = box_ctype expected; actual = box_ctype actual }
 
 module Primitive = struct
   let unit = CPrimitive_type "unit"
@@ -39,7 +45,7 @@ let rec check_type env : (ptype, ctype) check =
   | PNamed_type { name; range } -> begin
     match Env.lookup Type name env with
     | Some t -> Ok t
-    | None -> type_error range
+    | None -> type_error range @@ Type_not_in_scope name
   end
   | PPointer_type { underlying_type; range = _ } ->
     let+ ctype = check_type env underlying_type in
@@ -58,7 +64,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       begin
         match Env.lookup Value name env with
         | Some t -> Ok t
-        | None -> type_error range
+        | None -> type_error range @@ Value_not_in_scope name
       end
     in
     CIdentifier { name; ctype }
@@ -67,18 +73,20 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
   | PInteger { value; range = _ } -> Ok (CInteger { value; ctype = Primitive.int })
   | PFloat { value; range = _ } -> Ok (CFloat { value; ctype = Primitive.float })
   | PString { value; range = _ } -> Ok (CString { value; ctype = Primitive.string })
-  | PArray { elements = []; range } -> type_error range
+  | PArray { elements = []; range } -> type_error range Empty_array
   | PArray { elements = first :: rest; range = _ } ->
     let* cfirst = check_expression env first in
     let element_type = cexpression_type cfirst in
     let+ crest =
       let f pexpression = function
         | Ok acc ->
-          let* cexpression = check_expression env pexpression in
-          if cexpression_type cexpression = element_type then
-            Ok (cexpression :: acc)
+          let* cexpr = check_expression env pexpression in
+          let cexpr_type = cexpression_type cexpr in
+          if cexpr_type = element_type then
+            Ok (cexpr :: acc)
           else
             type_error (pexpression_range pexpression)
+            @@ type_mismatch element_type cexpr_type
         | e -> e
       in
       List.fold_right f rest (Ok [])
@@ -90,53 +98,75 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       begin
         match Env.lookup Type name env with
         | Some t -> Ok t
-        | None -> type_error range
+        | None -> type_error range @@ Type_not_in_scope name
       end
     in
     let* record_fields =
       match ctype with
       | CRecord_type { name = _; fields } -> Ok fields
-      | _ -> type_error range
+      | _ -> type_error range @@ Not_record (box_ctype ctype)
     in
-    let+ cfields =
-      let field_counter = Hashtbl.create 10 in
+    let field_counter = Hashtbl.create 10 in
+    let* cfields =
       let f (name, pvalue) = function
         | Ok acc ->
           let* cvalue = check_expression env pvalue in
           if Option.is_some @@ Hashtbl.find_opt field_counter name then
             type_error (pexpression_range pvalue)
+            @@ Initializer_duplicate_field { expected = box_ctype ctype; field = name }
           else begin
             Hashtbl.add field_counter name ();
             match List.assoc_opt name record_fields with
-            | Some expected when cexpression_type cvalue = expected ->
-              Ok ((name, cvalue) :: acc)
-            | _ -> type_error (pexpression_range pvalue)
+            | None ->
+              type_error (pexpression_range pvalue)
+              @@ Initializer_no_field { expected = box_ctype ctype; field = name }
+            | Some expected ->
+              let cexpr_type = cexpression_type cvalue in
+              if cexpr_type = expected then
+                Ok ((name, cvalue) :: acc)
+              else
+                type_error (pexpression_range pvalue) @@ type_mismatch expected cexpr_type
           end
         | e -> e
       in
       List.fold_right f fields (Ok [])
     in
-    CRecord { name; fields = cfields; ctype }
+    let filter_missing (field_name, _) =
+      match Hashtbl.find_opt field_counter field_name with
+      | Some _ -> None
+      | None -> Some field_name
+    in
+    begin
+      match List.filter_map filter_missing record_fields with
+      | field_name :: _ ->
+        type_error range
+        @@ Initializer_missing_field_value
+             { expected = box_ctype ctype; field = field_name }
+      | [] -> Ok (CRecord { name; fields = cfields; ctype })
+    end
   | PIndex { expression; index; range = _ } ->
     let* cexpression = check_expression env expression in
     let* cindex = check_expression env index in
     begin
-      match cexpression_type cexpression with
+      let cexpr_type = cexpression_type cexpression in
+      match cexpr_type with
       | CArray_type element_type ->
         Ok (CIndex { expression = cexpression; index = cindex; ctype = element_type })
-      | _ -> type_error (pexpression_range expression)
+      | _ -> type_error (pexpression_range expression) @@ Not_array (box_ctype cexpr_type)
     end
   | PAccess { expression; field; range } ->
     let* cexpression = check_expression env expression in
     begin
-      match cexpression_type cexpression with
+      let cexpr_type = cexpression_type cexpression in
+      match cexpr_type with
       | CRecord_type { name = _; fields } -> begin
         match List.assoc_opt field fields with
         | Some field_type ->
           Ok (CAccess { expression = cexpression; field; ctype = field_type })
-        | None -> type_error range
+        | None -> type_error range @@ No_field { actual = box_ctype cexpr_type; field }
       end
-      | _ -> type_error (pexpression_range expression)
+      | _ ->
+        type_error (pexpression_range expression) @@ Not_record (box_ctype cexpr_type)
     end
   | PAssign { target; source; range = _ } ->
     let* ctarget = check_expression env target in
@@ -145,12 +175,14 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       Ok (CAssign { target = ctarget; source = csource; ctype = Primitive.unit })
     else
       type_error (pexpression_range source)
+      @@ type_mismatch (cexpression_type ctarget) (cexpression_type csource)
   | PApply { func; arguments; range = _ } ->
     let* cfunc = check_expression env func in
     let* cfunc_params, cfunc_result =
-      match cexpression_type cfunc with
+      let cfunc_type = cexpression_type cfunc in
+      match cfunc_type with
       | CFunction_type { parameters; return_type } -> Ok (parameters, return_type)
-      | _ -> type_error (pexpression_range func)
+      | _ -> type_error (pexpression_range func) @@ Not_function (box_ctype cfunc_type)
     in
     let+ cargs =
       let f expected parg = function
@@ -160,7 +192,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
           if actual = expected then
             Ok (carg :: acc)
           else
-            type_error (pexpression_range parg)
+            type_error (pexpression_range parg) @@ type_mismatch expected actual
         | e -> e
       in
       List.fold_right2 f cfunc_params arguments (Ok [])
@@ -175,17 +207,17 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         if ctype = Primitive.bool then
           Ok Primitive.bool
         else
-          type_error (pexpression_range expression)
+          type_error (pexpression_range expression) @@ type_mismatch Primitive.bool ctype
       | Negate ->
         if ctype = Primitive.int || ctype = Primitive.float then
           Ok ctype
         else
-          type_error (pexpression_range expression)
+          type_error (pexpression_range expression) @@ Not_numeric (box_ctype ctype)
       | Address_of -> Ok (CPointer_type ctype)
       | Dereference -> begin
         match ctype with
         | CPointer_type underlying -> Ok underlying
-        | _ -> type_error (pexpression_range expression)
+        | _ -> type_error (pexpression_range expression) @@ Not_pointer (box_ctype ctype)
       end
     in
     CUnary_operator { operator; expression = cexpression; ctype = cresult_type }
@@ -198,16 +230,16 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       match operator with
       | And | Or ->
         if cleft_type <> Primitive.bool then
-          type_error (pexpression_range right)
+          type_error (pexpression_range right) @@ type_mismatch Primitive.bool cleft_type
         else if cright_type <> Primitive.bool then
-          type_error (pexpression_range right)
+          type_error (pexpression_range right) @@ type_mismatch Primitive.bool cright_type
         else
           Ok Primitive.bool
       | Equal | Not_equal ->
         if cleft_type = cright_type then
           Ok cleft_type
         else
-          type_error (pexpression_range right)
+          type_error (pexpression_range right) @@ type_mismatch cleft_type cright_type
       | Less
       | Less_equal
       | Greater
@@ -221,9 +253,9 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
           if cleft_type = cright_type then
             Ok cleft_type
           else
-            type_error (pexpression_range right)
+            type_error (pexpression_range right) @@ type_mismatch cleft_type cright_type
         else
-          type_error (pexpression_range left)
+          type_error (pexpression_range left) @@ Not_numeric (box_ctype cleft_type)
     in
     CBinary_operator { left = cleft; operator; right = cright; ctype = cresult_type }
   | PBlock { body; range = _ } ->
@@ -243,6 +275,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
            })
     else
       type_error (pexpression_range value)
+      @@ type_mismatch cvalue_type_expected cvalue_type_actual
   | PLet { name; value_type = None; value; range = _ } ->
     let+ cvalue = check_expression env value in
     let cvalue_type = cexpression_type cvalue in
@@ -254,7 +287,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       if ctype = Primitive.bool then
         Ok ()
       else
-        type_error (pexpression_range condition)
+        type_error (pexpression_range condition) @@ type_mismatch Primitive.bool ctype
     in
     let* ctrue_branch = check_expression env true_branch in
     let ctrue_type = cexpression_type ctrue_branch in
@@ -270,6 +303,8 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
            })
     else
       type_error (pexpression_range false_branch)
+      @@ If_branch_mismatch
+           { true_branch = box_ctype ctrue_type; false_branch = box_ctype cfalse_type }
   | PClosure { parameters; return_type; body; range = _ } ->
     let* cparameters =
       let f (name, ptype) = function
@@ -291,7 +326,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         if cbody_type = creturn_type then
           Ok creturn_type
         else
-          type_error (pexpression_range body)
+          type_error (pexpression_range body) @@ type_mismatch creturn_type cbody_type
     in
     let ctype =
       CFunction_type { parameters = List.map snd cparameters; return_type = creturn_type }
@@ -315,6 +350,7 @@ and check_block (env : Env.t) : (pblock, cblock) check =
             Ok cvalue_type_expected
           else
             type_error (pexpression_range value)
+            @@ type_mismatch cvalue_type_expected cvalue_type_actual
       in
       let+ cexpressions = check_statements (Env.add Value name cvalue_type env) stats in
       CLet { name; value_type = cvalue_type; value = cexpression; ctype = Primitive.unit }
@@ -375,7 +411,7 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
           in
           Ok (Env.Value, name, ctype, cfunction)
         else
-          type_error (pexpression_range body)
+          type_error (pexpression_range body) @@ type_mismatch creturn_type cbody_type
       | PType_alias { name; value; range = _ } ->
         let+ ctype = check_type env value in
         Env.Type, name, ctype, CType_alias { name; value = ctype }
