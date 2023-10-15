@@ -13,8 +13,10 @@ and cdefinition =
       }
   | CType_record of
       { name : string
-      ; fields : (string * ctype) list
+      ; record : crecord
       }
+
+and crecord = { fields : (string * ctype) list }
 
 and ctype =
   | CPrimitive_type of string
@@ -24,10 +26,7 @@ and ctype =
       { parameters : ctype list
       ; return_type : ctype
       }
-  | CRecord_type of
-      { name : string
-      ; fields : (string * ctype) list
-      }
+  | CRecord_type of { name : string }
 
 and cexpression =
   | CIdentifier of

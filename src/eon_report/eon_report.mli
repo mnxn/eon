@@ -13,6 +13,7 @@ val pp_printable : Format.formatter -> printable -> unit
 type type_error =
   | Type_not_in_scope of string
   | Value_not_in_scope of string
+  | Record_missing of string
   | Type_mismatch of
       { expected : printable
       ; actual : printable

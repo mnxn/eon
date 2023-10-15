@@ -22,6 +22,7 @@ let pp_printable ppf (P { value; pp }) = pp ppf value
 type type_error =
   | Type_not_in_scope of string
   | Value_not_in_scope of string
+  | Record_missing of string
   | Type_mismatch of
       { expected : printable
       ; actual : printable
@@ -81,6 +82,7 @@ let pp_details ppf = function
       match type_error with
       | Type_not_in_scope name -> Format.fprintf ppf "type %s is not in scope" name
       | Value_not_in_scope name -> Format.fprintf ppf "value %s is not in scope" name
+      | Record_missing name -> Format.fprintf ppf "missing definition for record %s" name
       | Type_mismatch { expected; actual } ->
         Format.fprintf
           ppf

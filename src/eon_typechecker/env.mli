@@ -1,13 +1,14 @@
 type t
 
-type binding_type =
-  | Type
-  | Value
+type 'a binding_type =
+  | Type : Typedtree.ctype binding_type
+  | Value : Typedtree.ctype binding_type
+  | Record : Typedtree.crecord binding_type
 
 val empty : t
 
-val add : binding_type -> string -> Typedtree.ctype -> t -> t
+val add : 'a binding_type -> string -> 'a -> t -> t
 
-val add_all : binding_type -> (string * Typedtree.ctype) list -> t -> t
+val add_all : 'a binding_type -> (string * 'a) list -> t -> t
 
-val lookup : binding_type -> string -> t -> Typedtree.ctype option
+val lookup : 'a binding_type -> string -> t -> 'a option

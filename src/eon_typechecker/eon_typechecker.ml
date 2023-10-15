@@ -103,7 +103,11 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
     in
     let* record_fields =
       match ctype with
-      | CRecord_type { name = _; fields } -> Ok fields
+      | CRecord_type { name } -> begin
+        match Env.lookup Record name env with
+        | Some { fields } -> Ok fields
+        | None -> type_error range @@ Record_missing name
+      end
       | _ -> type_error range @@ Not_record (box_ctype ctype)
     in
     let field_counter = Hashtbl.create 10 in
@@ -156,11 +160,20 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
     end
   | PAccess { expression; field; range } ->
     let* cexpression = check_expression env expression in
-    begin
-      let cexpr_type = cexpression_type cexpression in
+    let cexpr_type = cexpression_type cexpression in
+    let* record_fields =
       match cexpr_type with
-      | CRecord_type { name = _; fields } -> begin
-        match List.assoc_opt field fields with
+      | CRecord_type { name } -> begin
+        match Env.lookup Record name env with
+        | Some { fields } -> Ok fields
+        | None -> type_error range @@ Record_missing name
+      end
+      | _ -> type_error range @@ Not_record (box_ctype cexpr_type)
+    in
+    begin
+      match cexpr_type with
+      | CRecord_type { name = _ } -> begin
+        match List.assoc_opt field record_fields with
         | Some field_type ->
           Ok (CAccess { expression = cexpression; field; ctype = field_type })
         | None -> type_error range @@ No_field { actual = box_ctype cexpr_type; field }
@@ -384,7 +397,7 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
   function
   | [] -> Ok []
   | pdef :: pdefs ->
-    let* binding_type, name, value, cdef =
+    let* cdef, new_env =
       match pdef with
       | PFunction { name; parameters; return_type; body; range = _ } ->
         let* cparameters =
@@ -409,20 +422,19 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
             CFunction_type
               { parameters = List.map snd cparameters; return_type = creturn_type }
           in
-          Ok (Env.Value, name, ctype, cfunction)
+          Ok (cfunction, Env.(add Value) name ctype env)
         else
           type_error (pexpression_range body) @@ type_mismatch creturn_type cbody_type
       | PType_alias { name; value; range = _ } ->
         let+ ctype = check_type env value in
-        Env.Type, name, ctype, CType_alias { name; value = ctype }
+        CType_alias { name; value = ctype }, Env.(add Type) name ctype env
       | PType_record { name; fields; range = _ } ->
         let+ cfields = check_fields fields in
-        ( Env.Type
-        , name
-        , CRecord_type { name; fields = cfields }
-        , CType_record { name; fields = cfields } )
+        ( CType_record { name; record = { fields = cfields } }
+        , env
+          |> Env.(add Type) name (CRecord_type { name })
+          |> Env.(add Record) name { fields = cfields } )
     in
-    let new_env = Env.add binding_type name value env in
     let+ crest = check_definitions new_env pdefs in
     cdef :: crest
 
