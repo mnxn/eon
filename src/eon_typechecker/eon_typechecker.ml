@@ -265,7 +265,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
           Ok Primitive.bool
       | Equal | Not_equal ->
         if cleft_type = cright_type then
-          Ok cleft_type
+          Ok Primitive.bool
         else
           type_error (pexpression_range right) @@ type_mismatch cleft_type cright_type
       | Less
