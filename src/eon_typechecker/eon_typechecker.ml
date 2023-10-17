@@ -420,17 +420,17 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
           List.fold_right f parameters (Ok [])
         in
         let* creturn_type = check_type env return_type in
-        let body_env = Env.add_all Value cparameters env in
+        let ctype =
+          CFunction_type
+            { parameters = List.map snd cparameters; return_type = creturn_type }
+        in
+        let body_env = env |> Env.add_all Value cparameters |> Env.add Value name ctype in
         let* cbody = check_expression body_env body in
         let cbody_type = cexpression_type cbody in
         if cbody_type = creturn_type then
           let cfunction =
             CFunction
               { name; parameters = cparameters; return_type = creturn_type; body = cbody }
-          in
-          let ctype =
-            CFunction_type
-              { parameters = List.map snd cparameters; return_type = creturn_type }
           in
           Ok (cfunction, Env.(add Value) name ctype env)
         else
