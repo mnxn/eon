@@ -67,6 +67,7 @@ and cexpression =
   | CAccess of
       { expression : cexpression
       ; field : string
+      ; field_index : int
       ; ctype : ctype
       }
   | CAssign of

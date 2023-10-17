@@ -173,10 +173,18 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
     begin
       match cexpr_type with
       | CRecord_type { name = _ } -> begin
-        match List.assoc_opt field record_fields with
-        | Some field_type ->
-          Ok (CAccess { expression = cexpression; field; ctype = field_type })
-        | None -> type_error range @@ No_field { actual = box_ctype cexpr_type; field }
+        let rec find_field field_index = function
+          | [] -> type_error range @@ No_field { actual = box_ctype cexpr_type; field }
+          | (field_name, field_type) :: rest ->
+            if field_name <> field then
+              find_field (field_index + 1) rest
+            else
+              Ok
+                (CAccess
+                   { expression = cexpression; field; field_index; ctype = field_type })
+        in
+
+        find_field 0 record_fields
       end
       | _ ->
         type_error (pexpression_range expression) @@ Not_record (box_ctype cexpr_type)
