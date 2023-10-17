@@ -202,7 +202,14 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
     let* cfunc_params, cfunc_result =
       let cfunc_type = cexpression_type cfunc in
       match cfunc_type with
-      | CFunction_type { parameters; return_type } -> Ok (parameters, return_type)
+      | CFunction_type { parameters; return_type } ->
+        let arg_count = List.length arguments in
+        let param_count = List.length parameters in
+        if arg_count = param_count then
+          Ok (parameters, return_type)
+        else
+          type_error (pexpression_range func)
+          @@ Argument_count_mismatch { expected = param_count; actual = arg_count }
       | _ -> type_error (pexpression_range func) @@ Not_function (box_ctype cfunc_type)
     in
     let+ cargs =
