@@ -356,43 +356,38 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       (CClosure
          { parameters = cparameters; return_type = creturn_type; body = cbody; ctype })
 
-and check_block (env : Env.t) : (pblock, cblock) check =
-  let rec check_statements env : (pexpression list, cexpression list) check = function
-    | [] -> Ok []
-    | PLet { name; value_type; value; range = _ } :: stats ->
-      let* cexpression = check_expression env value in
-      let cvalue_type_actual = cexpression_type cexpression in
-      let* cvalue_type =
-        match value_type with
-        | None -> Ok cvalue_type_actual
-        | Some value_type ->
-          let* cvalue_type_expected = check_type env value_type in
-          if cvalue_type_actual = cvalue_type_expected then
-            Ok cvalue_type_expected
-          else
-            type_error (pexpression_range value)
-            @@ type_mismatch cvalue_type_expected cvalue_type_actual
-      in
-      let+ cexpressions = check_statements (Env.add Value name cvalue_type env) stats in
-      CLet { name; value_type = cvalue_type; value = cexpression; ctype = Primitive.unit }
-      :: cexpressions
-    | stat :: stats ->
-      let* cexpression = check_expression env stat in
-      let+ cexpressions = check_statements env stats in
-      cexpression :: cexpressions
-  in
-  function
-  | { statements; result } ->
-    let* cstatements = check_statements env statements in
-    let+ cresult, ctype =
-      match result with
-      | None -> Ok (None, Primitive.unit)
-      | Some result ->
-        let+ cexpression = check_expression env result in
-        let ctype = cexpression_type cexpression in
-        Some cexpression, ctype
+and check_block (env : Env.t) : (pblock, cblock) check = function
+  | { statements = []; result = None } ->
+    Ok { statements = []; result = None; ctype = Primitive.unit }
+  | { statements = []; result = Some result } ->
+    let+ cexpression = check_expression env result in
+    let ctype = cexpression_type cexpression in
+    { statements = []; result = Some cexpression; ctype }
+  | { statements = PLet { name; value_type; value; range = _ } :: stats; _ } as pblock ->
+    let* cexpression = check_expression env value in
+    let cvalue_type_actual = cexpression_type cexpression in
+    let* cvalue_type =
+      match value_type with
+      | None -> Ok cvalue_type_actual
+      | Some value_type ->
+        let* cvalue_type_expected = check_type env value_type in
+        if cvalue_type_actual = cvalue_type_expected then
+          Ok cvalue_type_expected
+        else
+          type_error (pexpression_range value)
+          @@ type_mismatch cvalue_type_expected cvalue_type_actual
     in
-    { statements = cstatements; result = cresult; ctype }
+    let+ cblock =
+      check_block (Env.add Value name cvalue_type env) { pblock with statements = stats }
+    in
+    let clet =
+      CLet { name; value_type = cvalue_type; value = cexpression; ctype = Primitive.unit }
+    in
+    { cblock with statements = clet :: cblock.statements }
+  | { statements = stat :: stats; _ } as pblock ->
+    let* cexpression = check_expression env stat in
+    let+ cblock = check_block env { pblock with statements = stats } in
+    { cblock with statements = cexpression :: cblock.statements }
 
 let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) check =
   let rec check_fields : ((string * ptype) list, (string * ctype) list) check = function
