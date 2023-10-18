@@ -9,7 +9,10 @@ type value =
   | Float of float
   | String of string
   | Array of value array
-  | Record of (string, value) Hashtbl.t
+  | Record of
+      { name : string
+      ; fields : (string, value) Hashtbl.t
+      }
   | Box of { mutable value : value }
   | Closure of
       { parameters : string array

@@ -10,7 +10,10 @@ type value =
   | Float of float
   | String of string
   | Array of value array
-  | Record of (string, value) Hashtbl.t
+  | Record of
+      { name : string
+      ; fields : (string, value) Hashtbl.t
+      }
   | Box of { mutable value : value }
   | Closure of
       { parameters : string array
@@ -33,15 +36,15 @@ let rec print_value ppf = function
     Format.fprintf ppf "[ ";
     Array.iteri print_array_element a;
     Format.fprintf ppf " ]"
-  | Record r ->
-    let length = Hashtbl.length r in
+  | Record { name; fields } ->
+    let length = Hashtbl.length fields in
     let print_record_element name value i =
       Format.fprintf ppf "%s = %a" name print_value value;
       if i < length - 1 then Format.fprintf ppf ", ";
       i + 1
     in
-    Format.fprintf ppf "{ ";
-    ignore @@ Hashtbl.fold print_record_element r 0;
+    Format.fprintf ppf "%s { " name;
+    ignore @@ Hashtbl.fold print_record_element fields 0;
     Format.fprintf ppf " }"
   | Box { value } -> Format.fprintf ppf "&%a" print_value value
   | Closure { parameters; _ } ->
@@ -56,8 +59,8 @@ let rec equal_value l r =
   | String l, String r -> String.equal l r
   | Array l, Array r -> Array.length l = Array.length r && Array.for_all2 equal_value l r
   | Record l, Record r ->
-    let l_bindings = sort_bindings l in
-    let r_bindings = sort_bindings r in
+    let l_bindings = sort_bindings l.fields in
+    let r_bindings = sort_bindings r.fields in
     Array.length l_bindings = Array.length r_bindings
     && Array.for_all2 equal_bindings l_bindings r_bindings
   | Box { value = l }, Box { value = r } -> equal_value l r
@@ -141,14 +144,14 @@ let rec eval_expression env : Typedtree.cexpression -> value = function
   | CArray { elements; _ } ->
     let values = List.map (eval_expression env) elements in
     Array (Array.of_list values)
-  | CRecord { fields; _ } ->
+  | CRecord { name; fields; _ } ->
     let values =
       fields
       |> List.map (fun (name, cexpr) -> name, eval_expression env cexpr)
       |> List.to_seq
       |> Hashtbl.of_seq
     in
-    Record values
+    Record { name; fields = values }
   | CIndex { expression; index; _ } ->
     let expression_value = eval_expression env expression in
     let index_value = eval_expression env index in
@@ -170,7 +173,7 @@ let rec eval_expression env : Typedtree.cexpression -> value = function
     let expression_value = eval_expression env expression in
     begin
       match expression_value with
-      | Record r -> Hashtbl.find r field
+      | Record { fields; _ } -> Hashtbl.find fields field
       | actual ->
         raise_shape_mismatch
           Record_shape
