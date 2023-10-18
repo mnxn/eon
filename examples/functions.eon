@@ -1,0 +1,9 @@
+type intfunc = () -> int
+
+func a(): int = 1
+
+func main(): [int] = {
+    let b: intfunc = a;
+    let c: () -> int = func(): int -> 2;
+    [ a(), b(), c() ]
+}

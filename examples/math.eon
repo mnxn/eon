@@ -1,0 +1,12 @@
+func main(): [float] = {
+    let a = 4.3;
+    let b = 2.1;
+    [
+        -a,
+        a + b,
+        a - b,
+        a * b,
+        a / b,
+        a % b
+    ]
+}

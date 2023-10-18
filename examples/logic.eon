@@ -1,0 +1,11 @@
+func main(): [bool] = {
+    let a = true;
+    let b = false;
+    [
+        !a,
+        a && b,
+        a || b,
+        a == b,
+        a != b
+    ]
+}

@@ -1,0 +1,13 @@
+type name {
+    first: string,
+    last: ^string
+}
+
+func main(): name = {
+    let n = name {
+        first = "first",
+        last = &"last1"
+    };
+    n.last <- "last2";
+    n
+}

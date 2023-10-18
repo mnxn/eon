@@ -1,0 +1,7 @@
+func main(): [int] = {
+    let x: ^int = &1;
+    let before = func() -> ^x;
+    x <- 2;
+    let after = func() -> ^x;
+    [before(), after()]
+}
