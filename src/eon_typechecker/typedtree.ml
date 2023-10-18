@@ -181,3 +181,26 @@ and print_function_parameters ppf = function
   | param :: params ->
     Format.fprintf ppf "%a, " print_ctype param;
     print_function_parameters ppf params
+
+let cdefinition_range : cdefinition -> Eon_report.range = function
+  | CFunction { range; _ } | CType_alias { range; _ } | CType_record { range; _ } -> range
+
+let cexpression_range : cexpression -> Eon_report.range = function
+  | CIdentifier { range; _ }
+  | CUnit { range; _ }
+  | CBoolean { range; _ }
+  | CInteger { range; _ }
+  | CFloat { range; _ }
+  | CString { range; _ }
+  | CArray { range; _ }
+  | CRecord { range; _ }
+  | CIndex { range; _ }
+  | CAccess { range; _ }
+  | CAssign { range; _ }
+  | CApply { range; _ }
+  | CUnary_operator { range; _ }
+  | CBinary_operator { range; _ }
+  | CBlock { range; _ }
+  | CLet { range; _ }
+  | CIf { range; _ }
+  | CClosure { range; _ } -> range

@@ -165,3 +165,7 @@ val show_cblock : cblock -> string
 val cexpression_type : cexpression -> ctype
 
 val print_ctype : Format.formatter -> ctype -> unit
+
+val cdefinition_range : cdefinition -> Eon_report.range
+
+val cexpression_range : cexpression -> Eon_report.range
