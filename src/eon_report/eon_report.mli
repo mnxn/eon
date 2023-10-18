@@ -49,6 +49,18 @@ type type_error =
       ; false_branch : printable
       }
 
+type runtime_error =
+  | Undefined_value of string
+  | Zero_division
+  | Value_shape_mismatch of
+      { expected : printable
+      ; actual : printable
+      }
+  | Value_argument_count_mismatch of
+      { expected : int
+      ; actual : int
+      }
+
 type error =
   | Lexer_error of range
   | Parser_error of range
@@ -56,7 +68,11 @@ type error =
       { type_error : type_error
       ; range : range
       }
+  | Runtime_error of
+      { runtime_error : runtime_error
+      ; range : range option
+      }
 
 val pp_error : char Gen.t -> Format.formatter -> error -> unit
 
-val range : error -> range
+val range : error -> range option

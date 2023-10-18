@@ -58,6 +58,18 @@ type type_error =
       ; false_branch : printable
       }
 
+type runtime_error =
+  | Undefined_value of string
+  | Zero_division
+  | Value_shape_mismatch of
+      { expected : printable
+      ; actual : printable
+      }
+  | Value_argument_count_mismatch of
+      { expected : int
+      ; actual : int
+      }
+
 type error =
   | Lexer_error of range
   | Parser_error of range
@@ -65,11 +77,16 @@ type error =
       { type_error : type_error
       ; range : range
       }
+  | Runtime_error of
+      { runtime_error : runtime_error
+      ; range : range option
+      }
 
 let range = function
-  | Lexer_error r -> r
-  | Parser_error r -> r
-  | Type_error { range; _ } -> range
+  | Lexer_error r -> Some r
+  | Parser_error r -> Some r
+  | Type_error { range; _ } -> Some range
+  | Runtime_error { range; _ } -> range
 
 let column { Lexing.pos_cnum; pos_bol; _ } = pos_cnum - pos_bol + 1
 
@@ -145,9 +162,24 @@ let pp_details ppf = function
           pp_printable
           false_branch
     end
+  | Runtime_error { runtime_error; _ } -> begin
+    Format.fprintf ppf "Runtime error (FATAL): ";
+    match runtime_error with
+    | Undefined_value name -> Format.fprintf ppf "value %s is undefined" name
+    | Zero_division -> Format.fprintf ppf "division by zero"
+    | Value_shape_mismatch { expected; actual } ->
+      Format.fprintf
+        ppf
+        "expected %a, bot got %a"
+        pp_printable
+        expected
+        pp_printable
+        actual
+    | Value_argument_count_mismatch { expected; actual } ->
+      Format.fprintf ppf "expected %d arguments, but got %d" expected actual
+  end
 
-let pp_error (gen : char Gen.t) ppf e =
-  let start_pos, end_pos = range e in
+let pp_error_code (gen : char Gen.t) ppf (start_pos, end_pos) =
   Format.fprintf ppf "File \"%s\", " start_pos.pos_fname;
 
   if start_pos.pos_lnum = end_pos.pos_lnum then
@@ -189,6 +221,8 @@ let pp_error (gen : char Gen.t) ppf e =
     if in_range !pos then Format.pp_print_string ppf Colors.clear;
 
     Format.pp_print_newline ppf ()
-  done;
+  done
 
+let pp_error gen ppf e =
+  Option.iter (pp_error_code gen ppf) (range e);
   Format.fprintf ppf "%a@." pp_details e
