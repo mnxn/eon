@@ -275,15 +275,15 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
           Ok Primitive.bool
         else
           type_error (pexpression_range right) @@ type_mismatch cleft_type cright_type
-      | Less
-      | Less_equal
-      | Greater
-      | Greater_equal
-      | Add
-      | Subtract
-      | Multiply
-      | Divide
-      | Remainder ->
+      | Less | Less_equal | Greater | Greater_equal ->
+        if cleft_type = Primitive.int || cleft_type = Primitive.float then
+          if cleft_type = cright_type then
+            Ok Primitive.bool
+          else
+            type_error (pexpression_range right) @@ type_mismatch cleft_type cright_type
+        else
+          type_error (pexpression_range left) @@ Not_numeric (box_ctype cleft_type)
+      | Add | Subtract | Multiply | Divide | Remainder ->
         if cleft_type = Primitive.int || cleft_type = Primitive.float then
           if cleft_type = cright_type then
             Ok cleft_type
