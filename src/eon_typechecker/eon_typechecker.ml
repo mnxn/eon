@@ -67,14 +67,14 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         | None -> type_error range @@ Value_not_in_scope name
       end
     in
-    CIdentifier { name; ctype }
-  | PUnit { range = _ } -> Ok (CUnit { ctype = Primitive.unit })
-  | PBoolean { value; range = _ } -> Ok (CBoolean { value; ctype = Primitive.bool })
-  | PInteger { value; range = _ } -> Ok (CInteger { value; ctype = Primitive.int })
-  | PFloat { value; range = _ } -> Ok (CFloat { value; ctype = Primitive.float })
-  | PString { value; range = _ } -> Ok (CString { value; ctype = Primitive.string })
+    CIdentifier { name; ctype; range }
+  | PUnit { range } -> Ok (CUnit { ctype = Primitive.unit; range })
+  | PBoolean { value; range } -> Ok (CBoolean { value; ctype = Primitive.bool; range })
+  | PInteger { value; range } -> Ok (CInteger { value; ctype = Primitive.int; range })
+  | PFloat { value; range } -> Ok (CFloat { value; ctype = Primitive.float; range })
+  | PString { value; range } -> Ok (CString { value; ctype = Primitive.string; range })
   | PArray { elements = []; range } -> type_error range Empty_array
-  | PArray { elements = first :: rest; range = _ } ->
+  | PArray { elements = first :: rest; range } ->
     let* cfirst = check_expression env first in
     let element_type = cexpression_type cfirst in
     let+ crest =
@@ -92,7 +92,7 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       List.fold_right f rest (Ok [])
     in
     let celements = cfirst :: crest in
-    CArray { elements = celements; ctype = CArray_type element_type }
+    CArray { elements = celements; ctype = CArray_type element_type; range }
   | PRecord { name; fields; range } ->
     let* ctype =
       begin
@@ -146,16 +146,18 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         type_error range
         @@ Initializer_missing_field_value
              { expected = box_ctype ctype; field = field_name }
-      | [] -> Ok (CRecord { name; fields = cfields; ctype })
+      | [] -> Ok (CRecord { name; fields = cfields; ctype; range })
     end
-  | PIndex { expression; index; range = _ } ->
+  | PIndex { expression; index; range } ->
     let* cexpression = check_expression env expression in
     let* cindex = check_expression env index in
     begin
       let cexpr_type = cexpression_type cexpression in
       match cexpr_type with
       | CArray_type element_type ->
-        Ok (CIndex { expression = cexpression; index = cindex; ctype = element_type })
+        Ok
+          (CIndex
+             { expression = cexpression; index = cindex; ctype = element_type; range })
       | _ -> type_error (pexpression_range expression) @@ Not_array (box_ctype cexpr_type)
     end
   | PAccess { expression; field; range } ->
@@ -181,7 +183,12 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
             else
               Ok
                 (CAccess
-                   { expression = cexpression; field; field_index; ctype = field_type })
+                   { expression = cexpression
+                   ; field
+                   ; field_index
+                   ; ctype = field_type
+                   ; range
+                   })
         in
 
         find_field 0 record_fields
@@ -189,15 +196,15 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       | _ ->
         type_error (pexpression_range expression) @@ Not_record (box_ctype cexpr_type)
     end
-  | PAssign { target; source; range = _ } ->
+  | PAssign { target; source; range } ->
     let* ctarget = check_expression env target in
     let* csource = check_expression env source in
     if cexpression_type ctarget = cexpression_type csource then
-      Ok (CAssign { target = ctarget; source = csource; ctype = Primitive.unit })
+      Ok (CAssign { target = ctarget; source = csource; ctype = Primitive.unit; range })
     else
       type_error (pexpression_range source)
       @@ type_mismatch (cexpression_type ctarget) (cexpression_type csource)
-  | PApply { func; arguments; range = _ } ->
+  | PApply { func; arguments; range } ->
     let* cfunc = check_expression env func in
     let* cfunc_params, cfunc_result =
       let cfunc_type = cexpression_type cfunc in
@@ -225,8 +232,8 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
       in
       List.fold_right2 f cfunc_params arguments (Ok [])
     in
-    CApply { func = cfunc; arguments = cargs; ctype = cfunc_result }
-  | PUnary_operator { operator; expression; range = _ } ->
+    CApply { func = cfunc; arguments = cargs; ctype = cfunc_result; range }
+  | PUnary_operator { operator; expression; range } ->
     let* cexpression = check_expression env expression in
     let ctype = cexpression_type cexpression in
     let+ cresult_type =
@@ -248,8 +255,8 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         | _ -> type_error (pexpression_range expression) @@ Not_pointer (box_ctype ctype)
       end
     in
-    CUnary_operator { operator; expression = cexpression; ctype = cresult_type }
-  | PBinary_operator { left; operator; right; range = _ } ->
+    CUnary_operator { operator; expression = cexpression; ctype = cresult_type; range }
+  | PBinary_operator { left; operator; right; range } ->
     let* cleft = check_expression env left in
     let* cright = check_expression env right in
     let cleft_type = cexpression_type cleft in
@@ -285,11 +292,12 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
         else
           type_error (pexpression_range left) @@ Not_numeric (box_ctype cleft_type)
     in
-    CBinary_operator { left = cleft; operator; right = cright; ctype = cresult_type }
-  | PBlock { body; range = _ } ->
+    CBinary_operator
+      { left = cleft; operator; right = cright; ctype = cresult_type; range }
+  | PBlock { body; range } ->
     let+ cblock = check_block env body in
-    CBlock cblock
-  | PLet { name; value_type = Some value_type; value; range = _ } ->
+    CBlock { block = cblock; range }
+  | PLet { name; value_type = Some value_type; value; range } ->
     let* cvalue = check_expression env value in
     let cvalue_type_actual = cexpression_type cvalue in
     let* cvalue_type_expected = check_type env value_type in
@@ -300,15 +308,16 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
            ; value_type = cvalue_type_expected
            ; value = cvalue
            ; ctype = Primitive.unit
+           ; range
            })
     else
       type_error (pexpression_range value)
       @@ type_mismatch cvalue_type_expected cvalue_type_actual
-  | PLet { name; value_type = None; value; range = _ } ->
+  | PLet { name; value_type = None; value; range } ->
     let+ cvalue = check_expression env value in
     let cvalue_type = cexpression_type cvalue in
-    CLet { name; value_type = cvalue_type; value = cvalue; ctype = Primitive.unit }
-  | PIf { condition; true_branch; false_branch; range = _ } ->
+    CLet { name; value_type = cvalue_type; value = cvalue; ctype = Primitive.unit; range }
+  | PIf { condition; true_branch; false_branch; range } ->
     let* ccondition = check_expression env condition in
     let* () =
       let ctype = cexpression_type ccondition in
@@ -328,12 +337,13 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
            ; true_branch = ctrue_branch
            ; false_branch = cfalse_branch
            ; ctype = ctrue_type
+           ; range
            })
     else
       type_error (pexpression_range false_branch)
       @@ If_branch_mismatch
            { true_branch = box_ctype ctrue_type; false_branch = box_ctype cfalse_type }
-  | PClosure { parameters; return_type; body; range = _ } ->
+  | PClosure { parameters; return_type; body; range } ->
     let* cparameters =
       let f (name, ptype) = function
         | Ok acc ->
@@ -361,7 +371,12 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
     in
     Ok
       (CClosure
-         { parameters = cparameters; return_type = creturn_type; body = cbody; ctype })
+         { parameters = cparameters
+         ; return_type = creturn_type
+         ; body = cbody
+         ; ctype
+         ; range
+         })
 
 and check_block (env : Env.t) : (pblock, cblock) check = function
   | { statements = []; result = None } ->
@@ -370,7 +385,7 @@ and check_block (env : Env.t) : (pblock, cblock) check = function
     let+ cexpression = check_expression env result in
     let ctype = cexpression_type cexpression in
     { statements = []; result = Some cexpression; ctype }
-  | { statements = PLet { name; value_type; value; range = _ } :: stats; _ } as pblock ->
+  | { statements = PLet { name; value_type; value; range } :: stats; _ } as pblock ->
     let* cexpression = check_expression env value in
     let cvalue_type_actual = cexpression_type cexpression in
     let* cvalue_type =
@@ -388,7 +403,13 @@ and check_block (env : Env.t) : (pblock, cblock) check = function
       check_block (Env.add Value name cvalue_type env) { pblock with statements = stats }
     in
     let clet =
-      CLet { name; value_type = cvalue_type; value = cexpression; ctype = Primitive.unit }
+      CLet
+        { name
+        ; value_type = cvalue_type
+        ; value = cexpression
+        ; ctype = Primitive.unit
+        ; range
+        }
     in
     { cblock with statements = clet :: cblock.statements }
   | { statements = stat :: stats; _ } as pblock ->
@@ -409,7 +430,7 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
   | pdef :: pdefs ->
     let* cdef, new_env =
       match pdef with
-      | PFunction { name; parameters; return_type; body; range = _ } ->
+      | PFunction { name; parameters; return_type; body; range } ->
         let* cparameters =
           let f (name, ptype) = function
             | Ok acc ->
@@ -430,17 +451,22 @@ let rec check_definitions (env : Env.t) : (pdefinition list, cdefinition list) c
         if cbody_type = creturn_type then
           let cfunction =
             CFunction
-              { name; parameters = cparameters; return_type = creturn_type; body = cbody }
+              { name
+              ; parameters = cparameters
+              ; return_type = creturn_type
+              ; body = cbody
+              ; range
+              }
           in
           Ok (cfunction, Env.(add Value) name ctype env)
         else
           type_error (pexpression_range body) @@ type_mismatch creturn_type cbody_type
-      | PType_alias { name; value; range = _ } ->
+      | PType_alias { name; value; range } ->
         let+ ctype = check_type env value in
-        CType_alias { name; value = ctype }, Env.(add Type) name ctype env
-      | PType_record { name; fields; range = _ } ->
+        CType_alias { name; value = ctype; range }, Env.(add Type) name ctype env
+      | PType_record { name; fields; range } ->
         let+ cfields = check_fields fields in
-        ( CType_record { name; record = { fields = cfields } }
+        ( CType_record { name; record = { fields = cfields }; range }
         , env
           |> Env.(add Type) name (CRecord_type { name })
           |> Env.(add Record) name { fields = cfields } )
