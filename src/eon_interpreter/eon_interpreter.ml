@@ -37,7 +37,7 @@ let rec print_value ppf = function
     let length = Hashtbl.length r in
     let print_record_element name value i =
       Format.fprintf ppf "%s = %a" name print_value value;
-      if i < length - 1 then Format.fprintf ppf ",";
+      if i < length - 1 then Format.fprintf ppf ", ";
       i + 1
     in
     Format.fprintf ppf "{ ";
