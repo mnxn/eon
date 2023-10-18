@@ -61,6 +61,11 @@ and cexpression =
       ; ctype : ctype
       ; range : Eon_report.range
       }
+  | CGroup of
+      { expression : cexpression
+      ; ctype : ctype
+      ; range : Eon_report.range
+      }
   | CArray of
       { elements : cexpression list
       ; ctype : ctype
@@ -150,6 +155,7 @@ let cexpression_type (cexpr : cexpression) =
   | CInteger { ctype; _ }
   | CFloat { ctype; _ }
   | CString { ctype; _ }
+  | CGroup { ctype; _ }
   | CArray { ctype; _ }
   | CRecord { ctype; _ }
   | CIndex { ctype; _ }
@@ -193,6 +199,7 @@ let cexpression_range : cexpression -> Eon_report.range = function
   | CFloat { range; _ }
   | CString { range; _ }
   | CArray { range; _ }
+  | CGroup { range; _ }
   | CRecord { range; _ }
   | CIndex { range; _ }
   | CAccess { range; _ }

@@ -61,6 +61,11 @@ and cexpression =
       ; ctype : ctype
       ; range : Eon_report.range
       }
+  | CGroup of
+      { expression : cexpression
+      ; ctype : ctype
+      ; range : Eon_report.range
+      }
   | CArray of
       { elements : cexpression list
       ; ctype : ctype

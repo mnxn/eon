@@ -60,6 +60,10 @@ and pexpression =
       { value : string
       ; range : Eon_report.range
       }
+  | PGroup of
+      { expression : pexpression
+      ; range : Eon_report.range
+      }
   | PArray of
       { elements : pexpression list
       ; range : Eon_report.range
@@ -165,6 +169,7 @@ let pexpression_range : pexpression -> Eon_report.range = function
   | PInteger { range; _ }
   | PFloat { range; _ }
   | PString { range; _ }
+  | PGroup { range; _ }
   | PArray { range; _ }
   | PRecord { range; _ }
   | PIndex { range; _ }

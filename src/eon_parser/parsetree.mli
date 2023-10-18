@@ -60,6 +60,10 @@ and pexpression =
       { value : string
       ; range : Eon_report.range
       }
+  | PGroup of
+      { expression : pexpression
+      ; range : Eon_report.range
+      }
   | PArray of
       { elements : pexpression list
       ; range : Eon_report.range

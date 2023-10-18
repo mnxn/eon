@@ -141,6 +141,7 @@ let rec eval_expression env : Typedtree.cexpression -> value = function
   | CInteger { value; _ } -> Integer value
   | CFloat { value; _ } -> Float value
   | CString { value; _ } -> String value
+  | CGroup { expression; _ } -> eval_expression env expression
   | CArray { elements; _ } ->
     let values = List.map (eval_expression env) elements in
     Array (Array.of_list values)

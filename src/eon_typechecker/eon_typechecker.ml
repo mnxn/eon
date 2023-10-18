@@ -73,6 +73,10 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
   | PInteger { value; range } -> Ok (CInteger { value; ctype = Primitive.int; range })
   | PFloat { value; range } -> Ok (CFloat { value; ctype = Primitive.float; range })
   | PString { value; range } -> Ok (CString { value; ctype = Primitive.string; range })
+  | PGroup { expression; range } ->
+    let+ cexpression = check_expression env expression in
+    let ctype = cexpression_type cexpression in
+    CGroup { expression = cexpression; ctype; range }
   | PArray { elements = []; range } -> type_error range Empty_array
   | PArray { elements = first :: rest; range } ->
     let* cfirst = check_expression env first in

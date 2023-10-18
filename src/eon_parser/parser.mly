@@ -53,6 +53,8 @@ expression:
     { PFloat { value; range = $loc } }
   | value=STRING
     { PString { value; range = $loc } }
+  | "(" expression=expression ")"
+    { PGroup { expression; range = $loc } }
   | "[" elements=separated_list(",", expression) "]"
     { PArray { elements; range = $loc } }
   | name=IDENTIFIER "{" fields=value_bindings "}"
