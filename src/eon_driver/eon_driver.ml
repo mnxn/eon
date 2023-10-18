@@ -67,7 +67,14 @@ let eval filename =
 
 let run = function
   | [] -> prerr_endline "missing argument"
-  | [ ("lex" | "parse" | "check") ] -> prerr_endline "missing filename"
+  | [ ( "lex"
+      | "parse"
+      | "check"
+      | "run"
+      | "parse-expression"
+      | "check-expression"
+      | "eval" )
+    ] -> prerr_endline "missing filename"
   | [ filename ] -> run filename
   | [ "lex"; filename ] -> lex filename
   | [ "parse"; filename ] -> parse filename
