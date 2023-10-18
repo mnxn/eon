@@ -198,12 +198,19 @@ let rec check_expression (env : Env.t) : (pexpression, cexpression) check = func
     end
   | PAssign { target; source; range } ->
     let* ctarget = check_expression env target in
-    let* csource = check_expression env source in
-    if cexpression_type ctarget = cexpression_type csource then
-      Ok (CAssign { target = ctarget; source = csource; ctype = Primitive.unit; range })
-    else
-      type_error (pexpression_range source)
-      @@ type_mismatch (cexpression_type ctarget) (cexpression_type csource)
+    let ctarget_type = cexpression_type ctarget in
+    begin
+      match ctarget_type with
+      | CPointer_type underlying ->
+        let* csource = check_expression env source in
+        if cexpression_type csource = underlying then
+          Ok
+            (CAssign { target = ctarget; source = csource; ctype = Primitive.unit; range })
+        else
+          type_error (pexpression_range source)
+          @@ type_mismatch underlying (cexpression_type csource)
+      | _ -> type_error (pexpression_range target) @@ Not_pointer (box_ctype ctarget_type)
+    end
   | PApply { func; arguments; range } ->
     let* cfunc = check_expression env func in
     let* cfunc_params, cfunc_result =
