@@ -130,10 +130,6 @@ let lookup_value env ?range name =
   | Some v -> v
   | None -> raise @@ Runtime_exception { runtime_error = Undefined_value name; range }
 
-let ( let* ) r f = Result.bind r f
-
-let ( let+ ) r f = Result.map f r
-
 let rec eval_expression env : Typedtree.cexpression -> value = function
   | CIdentifier { name; range; _ } -> lookup_value ~range env name
   | CUnit _ -> Unit

@@ -1,3 +1,9 @@
+module Colors = struct
+  let clear = "\027[0m"
+
+  let red = "\027[31m"
+end
+
 type position = Lexing.position =
   { pos_fname : string
   ; pos_lnum : int
