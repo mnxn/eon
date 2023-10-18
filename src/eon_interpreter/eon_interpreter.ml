@@ -21,6 +21,11 @@ type value =
       ; env : value Env.t Lazy.t
       }
 
+let sort_record_bindings tbl =
+  let arr = tbl |> Hashtbl.to_seq |> Array.of_seq in
+  Array.sort (fun (l, _) (r, _) -> String.compare l r) arr;
+  arr
+
 let rec print_value ppf = function
   | Unit -> Format.fprintf ppf "()"
   | Boolean b -> Format.fprintf ppf "%b" b
@@ -37,14 +42,14 @@ let rec print_value ppf = function
     Array.iteri print_array_element a;
     Format.fprintf ppf " ]"
   | Record { name; fields } ->
-    let length = Hashtbl.length fields in
-    let print_record_element name value i =
+    let bindings = sort_record_bindings fields in
+    let length = Array.length bindings in
+    let print_record_element i (name, value) =
       Format.fprintf ppf "%s = %a" name print_value value;
-      if i < length - 1 then Format.fprintf ppf ", ";
-      i + 1
+      if i < length - 1 then Format.fprintf ppf ", "
     in
     Format.fprintf ppf "%s { " name;
-    ignore @@ Hashtbl.fold print_record_element fields 0;
+    Array.iteri print_record_element bindings;
     Format.fprintf ppf " }"
   | Box { value } -> Format.fprintf ppf "&%a" print_value value
   | Closure { parameters; _ } ->
@@ -59,18 +64,13 @@ let rec equal_value l r =
   | String l, String r -> String.equal l r
   | Array l, Array r -> Array.length l = Array.length r && Array.for_all2 equal_value l r
   | Record l, Record r ->
-    let l_bindings = sort_bindings l.fields in
-    let r_bindings = sort_bindings r.fields in
+    let l_bindings = sort_record_bindings l.fields in
+    let r_bindings = sort_record_bindings r.fields in
     Array.length l_bindings = Array.length r_bindings
     && Array.for_all2 equal_bindings l_bindings r_bindings
   | Box { value = l }, Box { value = r } -> equal_value l r
   | Closure _, Closure _ -> l == r
   | _ -> false
-
-and sort_bindings tbl =
-  let arr = tbl |> Hashtbl.to_seq |> Array.of_seq in
-  Array.sort (fun (l, _) (r, _) -> String.compare l r) arr;
-  arr
 
 and equal_bindings (l_name, l_value) (r_name, r_value) =
   String.equal l_name r_name && equal_value l_value r_value
