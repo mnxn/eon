@@ -157,7 +157,16 @@ let rec eval_expression env : Typedtree.cexpression -> value = function
     let index_value = eval_expression env index in
     begin
       match expression_value, index_value with
-      | Array a, Integer i -> a.(Int64.to_int i)
+      | Array a, Integer i ->
+        let i = Int64.to_int i in
+        if 0 <= i && i < Array.length a then
+          a.(i)
+        else
+          raise
+          @@ Runtime_exception
+               { runtime_error = Array_out_of_bounds { index = i }
+               ; range = Some (Typedtree.cexpression_range index)
+               }
       | Array _, actual ->
         raise_shape_mismatch
           Integer_shape

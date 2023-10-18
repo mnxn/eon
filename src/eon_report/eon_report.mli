@@ -52,6 +52,7 @@ type type_error =
 type runtime_error =
   | Undefined_value of string
   | Zero_division
+  | Array_out_of_bounds of { index : int }
   | Value_shape_mismatch of
       { expected : printable
       ; actual : printable

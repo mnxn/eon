@@ -67,6 +67,7 @@ type type_error =
 type runtime_error =
   | Undefined_value of string
   | Zero_division
+  | Array_out_of_bounds of { index : int }
   | Value_shape_mismatch of
       { expected : printable
       ; actual : printable
@@ -173,6 +174,8 @@ let pp_details ppf = function
     match runtime_error with
     | Undefined_value name -> Format.fprintf ppf "value %s is undefined" name
     | Zero_division -> Format.fprintf ppf "division by zero"
+    | Array_out_of_bounds { index } ->
+      Format.fprintf ppf "array index %d is out of bounds" index
     | Value_shape_mismatch { expected; actual } ->
       Format.fprintf
         ppf
